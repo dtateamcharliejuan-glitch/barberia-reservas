@@ -1,6 +1,7 @@
 # Alex Barber · reservas sin login
 
 Reserva paso a paso, una pantalla por paso: servicio → día → hora libre → nombre y celular → listo.
+Quien reserva puede **cancelar** desde la pantalla de confirmación o desde «Tu próxima cita» en el inicio (solo desde el celular con el que reservó).
 Coste 0: la web vive en **GitHub Pages**, las citas en **Google Sheets** y el aviso llega al celular con **ntfy**.
 
 ## Cambiar nombre, precios y horario
@@ -8,6 +9,11 @@ Coste 0: la web vive en **GitHub Pages**, las citas en **Google Sheets** y el av
 Todo está en [`js/config.js`](js/config.js): nombre, barrio, días y horas de apertura, duración de cada hueco, servicios y precios.
 
 > En modo real, cambia **también** `SERVICES`, `OPEN_DAYS`, `OPEN`, `CLOSE` y `SLOT_MINUTES` arriba de `apps-script/Code.gs`: el servidor revisa cada reserva y no se fía del navegador.
+
+## Logo y fotos
+
+- **Logo:** guarda el archivo en `img/` y pon la ruta en `logo` de `js/config.js` (por ejemplo `img/logo.png`). Mientras tanto se ven las iniciales `AB`.
+- **Fotos:** ahora son de Unsplash (provisionales). Para usar fotos de Alex, guárdalas en `img/` y cambia `heroPhoto` y `photo` de cada servicio.
 
 ## Modo demo y modo real
 
@@ -32,7 +38,7 @@ Todo está en [`js/config.js`](js/config.js): nombre, barrio, días y horas de a
 7. Copia la URL que termina en `/exec` y pégala en `sheetsUrl` de `js/config.js`.
 
 Las citas aparecen en la pestaña **Citas** de la hoja (el barbero la ve en la app de Google Sheets).
-**Para cancelar una cita, borra su fila**: la hora vuelve a quedar libre en la web.
+**Para cancelar una cita, borra su fila**: la hora vuelve a quedar libre en la web. Si el cliente cancela desde la web, la fila se borra sola y llega un aviso «Cita cancelada».
 
 > Si cambias `Code.gs` más tarde: Implementar → Gestionar implementaciones → editar → Nueva versión. La URL no cambia.
 
@@ -43,8 +49,8 @@ Sube los cambios a GitHub (`main`). GitHub Pages publica la web sola en un minut
 
 ```bash
 npm install
-npm test      # lógica de horarios
-npm run e2e   # reserva completa en el navegador (Playwright + Edge), móvil y escritorio
+npm test      # horarios, cancelar, cambio de día y el servidor de Google (simulado)
+npm run e2e   # reservar, cancelar y medianoche en el navegador (Playwright + Edge), móvil y escritorio
 ```
 
 `npm run e2e` necesita la web servida en http://localhost:5173/barberia/ (o define BASE con otra URL). Las capturas quedan en `shots/`.
@@ -53,4 +59,5 @@ npm run e2e   # reserva completa en el navegador (Playwright + Edge), móvil y e
 
 - La web solo descarga **fecha y hora** de las citas ocupadas; nombres y celulares se quedan en la hoja de Alex.
 - El servidor solo acepta horas reales del horario, calcula el precio él mismo y limita a 2 citas futuras por celular.
+- Cancelar exige el código secreto que se guardó en el celular al reservar: nadie puede cancelar la cita de otro.
 - Si alguien abusa con otros números, Alex borra esas filas y las horas vuelven a quedar libres.

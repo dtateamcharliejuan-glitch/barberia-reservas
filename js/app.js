@@ -1,19 +1,25 @@
-import { config, money } from './config.js';
+import { config, money, photo } from './config.js';
 import { bookableDays, daySlots, toISODate } from './slots.js';
 import { createStore } from './store.js';
+import { addMine, listMine, removeMine } from './mine.js';
 
 const $ = sel => document.querySelector(sel);
 const store = createStore(config.sheetsUrl);
+const storage = (() => { try { localStorage.setItem('_t', '1'); localStorage.removeItem('_t'); return localStorage; } catch { const m = new Map(); return { getItem: k => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: k => m.delete(k) }; } })();
 
 // Orden del flujo. Cada paso es una pantalla.
 const STEPS = ['inicio', 'servicio', 'dia', 'hora', 'datos', 'listo'];
 const NUMBERED = ['servicio', 'dia', 'hora', 'datos']; // los que cuentan como "Paso n de 4"
 
-const state = { step: 'inicio', service: null, date: null, time: null, booked: [] };
+const state = { step: 'inicio', service: null, date: null, time: null, booked: [], last: null, today: toISODate(new Date()) };
 
 const parseDate = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d); };
 const longDay = iso => parseDate(iso).toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' });
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+const friendlyDay = (iso, now = new Date()) => {
+  const diff = Math.round((parseDate(iso) - parseDate(toISODate(now))) / 864e5);
+  return diff === 0 ? `Hoy, ${longDay(iso)}` : diff === 1 ? `Mañana, ${longDay(iso)}` : cap(longDay(iso));
+};
 const short = { 0: 'Dom', 1: 'Lun', 2: 'Mar', 3: 'Mié', 4: 'Jue', 5: 'Vie', 6: 'Sáb' };
 const service = () => config.services.find(s => s.id === state.service);
 
@@ -21,6 +27,30 @@ function el(tag, attrs = {}, html = '') {
   const node = Object.assign(document.createElement(tag), attrs);
   if (html) node.innerHTML = html;
   return node;
+}
+
+const ICON = {
+  service: '<svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg>',
+  day: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>',
+  time: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  price: '<svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>',
+};
+
+function summaryHTML(b) {
+  const row = (icon, label, value, cls = '') => `<div class="row ${cls}">${ICON[icon]}<dt>${label}</dt><dd>${value}</dd></div>`;
+  return `<dl>${row('service', 'Servicio', b.service)}${row('day', 'Día', friendlyDay(b.date))}${row('time', 'Hora', b.time)}${row('price', 'Precio', money(b.price), 'total')}</dl>`;
+}
+
+/* ---------- Avisos (toast) ---------- */
+
+let toastTimer;
+function toast(msg) {
+  const t = $('[data-toast]');
+  clearTimeout(toastTimer);
+  t.classList.remove('out');
+  t.hidden = false;
+  t.textContent = msg;
+  toastTimer = setTimeout(() => { t.classList.add('out'); setTimeout(() => (t.hidden = true), 220); }, 3200);
 }
 
 /* ---------- Navegación entre pantallas ---------- */
@@ -35,7 +65,7 @@ function show(step, dir = 'fwd') {
     if (on) { void s.offsetWidth; s.classList.add(`enter-${dir}`); }
   }
   const n = NUMBERED.indexOf(step);
-  $('[data-back]').hidden = step === 'inicio' || step === 'listo';
+  $('[data-back]').hidden = n < 0;
   $('[data-count]').hidden = n < 0;
   $('[data-progress]').hidden = n < 0;
   if (n >= 0) {
@@ -44,6 +74,7 @@ function show(step, dir = 'fwd') {
   }
   render();
   scrollTo(0, 0);
+  updateTop();
   const h = $(`[data-screen="${step}"] h1, [data-screen="${step}"] h2`);
   h?.setAttribute('tabindex', '-1');
   h?.focus({ preventScroll: true });
@@ -60,33 +91,76 @@ function back() {
   else show(STEPS[Math.max(0, STEPS.indexOf(state.step) - 1)], 'back');
 }
 
+// El paso más lejano al que se puede llegar con lo que ya está elegido.
+function reachable(step) {
+  if (['dia', 'hora', 'datos'].includes(step) && !state.service) return 'servicio';
+  if (['hora', 'datos'].includes(step) && !state.date) return 'dia';
+  if (step === 'datos' && !state.time) return 'hora';
+  if (step === 'listo' && !state.last) return 'inicio';
+  return step;
+}
+
 addEventListener('popstate', e => {
-  let step = e.state?.step ?? 'inicio';
-  // No se puede saltar a un paso sin haber completado los anteriores.
-  if (['dia', 'hora', 'datos'].includes(step) && !state.service) step = 'servicio';
-  if (['hora', 'datos'].includes(step) && !state.date) step = 'dia';
-  if (step === 'datos' && !state.time) step = 'hora';
-  if (step === 'listo') step = 'inicio';
+  const step = reachable(e.state?.step ?? 'inicio');
+  closeSheet();
   show(step, STEPS.indexOf(step) < STEPS.indexOf(state.step) ? 'back' : 'fwd');
 });
+
+// La cabecera es transparente sobre la foto del inicio.
+function updateTop() {
+  $('[data-top]').classList.toggle('over-hero', state.step === 'inicio' && scrollY < 120);
+}
+addEventListener('scroll', updateTop, { passive: true });
 
 /* ---------- Pantallas ---------- */
 
 function fillStatic() {
   document.querySelectorAll('[data-name]').forEach(n => (n.textContent = config.name));
   document.querySelectorAll('[data-district]').forEach(n => (n.textContent = config.district));
-  const days = config.openDays.slice().sort((a, b) => a - b);
-  $('[data-hours]').textContent = `${short[days[0]]}–${short[days.at(-1)]} · ${config.open}–${config.close}`;
   document.title = `${config.name} · Reserva tu cita`;
   $('[data-demo-note]').hidden = !store.demo;
+
+  const hero = $('[data-hero]');
+  hero.src = photo(config.heroPhoto, 900, 600);
+  hero.srcset = `${photo(config.heroPhoto, 600, 400)} 600w, ${photo(config.heroPhoto, 900, 600)} 900w, ${photo(config.heroPhoto, 1400, 933)} 1400w`;
+  hero.sizes = '(min-width: 720px) 540px, 100vw';
+
+  const logo = $('[data-logo]');
+  if (config.logo) logo.replaceChildren(el('img', { src: config.logo, alt: '' }));
+  else logo.textContent = config.initials;
+
   $('[data-price-list]').replaceChildren(...config.services.map(s =>
-    el('li', {}, `<span><b>${s.name}</b><small>${s.includes}</small></span><span class="price">${money(s.price)}</span>`)));
+    el('li', {}, `<img class="thumb" src="${photo(s.photo, 120, 120)}" alt="" width="56" height="56" loading="lazy"><span><b>${s.name}</b><small>${s.includes}</small></span><span class="price">${money(s.price)}</span>`)));
+}
+
+// "Abierto ahora" o cuándo abre.
+function renderStatus(now) {
+  const days = config.openDays.slice().sort((a, b) => a - b);
+  const hours = `${short[days[0]]}–${short[days.at(-1)]} · ${config.open}–${config.close}`;
+  const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const open = config.openDays.includes(now.getDay()) && hhmm >= config.open && hhmm < config.close;
+  $('[data-status]').classList.toggle('open', open);
+  $('[data-status-text]').textContent = open ? `Abierto ahora · hasta las ${config.close}` : `Cerrado ahora · ${hours}`;
+}
+
+function renderMine(now) {
+  const mine = listMine(storage, now);
+  const box = $('[data-mine]');
+  box.hidden = !mine.length;
+  box.replaceChildren(...mine.map(m => {
+    const card = el('div', { className: 'mine-card' }, `<small>Tu próxima cita</small><b>${friendlyDay(m.date, now)} · ${m.time}</b><span>${m.service}</span>`);
+    const btn = el('button', { type: 'button', className: 'btn btn-ghost btn-sm', textContent: 'Cancelar' });
+    btn.setAttribute('aria-label', `Cancelar la cita del ${longDay(m.date)} a las ${m.time}`);
+    btn.onclick = () => askCancel(m);
+    card.append(btn);
+    return card;
+  }));
 }
 
 function renderServices() {
   $('[data-services]').replaceChildren(...config.services.map(s => {
     const b = el('button', { type: 'button', className: 'option' },
-      `<b>${s.name}</b><span class="meta">${s.includes} · ${config.slotMinutes} min</span><span class="price">${money(s.price)}</span>`);
+      `<img src="${photo(s.photo, 160, 160)}" alt="" width="76" height="76"><span><b>${s.name}</b><span class="meta">${s.includes} · ${config.slotMinutes} min</span></span><span class="price">${money(s.price)}</span>`);
     b.setAttribute('aria-pressed', String(state.service === s.id));
     b.onclick = () => { state.service = s.id; go('dia'); };
     return b;
@@ -100,8 +174,9 @@ function renderDays(now) {
   for (let i = 0; i < lead; i++) cells.push(el('span'));
   for (const iso of days) {
     const free = daySlots(iso, config, state.booked, now).filter(s => s.available).length;
-    const label = free === 0 ? 'lleno' : iso === toISODate(now) ? 'hoy' : parseDate(iso).toLocaleDateString('es', { month: 'short' }).replace('.', '');
-    const b = el('button', { type: 'button', className: 'day', disabled: free === 0 }, `<b>${parseDate(iso).getDate()}</b><small>${label}</small>`);
+    const isToday = iso === toISODate(now);
+    const label = free === 0 ? 'lleno' : isToday ? 'hoy' : parseDate(iso).toLocaleDateString('es', { month: 'short' }).replace('.', '');
+    const b = el('button', { type: 'button', className: `day${isToday ? ' today' : ''}`, disabled: free === 0 }, `<b>${parseDate(iso).getDate()}</b><small>${label}</small>`);
     b.setAttribute('aria-pressed', String(state.date === iso));
     b.setAttribute('aria-label', `${longDay(iso)}${free === 0 ? ', sin horas libres' : `, ${free} horas libres`}`);
     b.onclick = () => { state.date = iso; state.time = null; go('hora'); };
@@ -115,19 +190,30 @@ function renderDays(now) {
 function renderTimes(now) {
   const box = $('[data-times]');
   if (!state.date) { box.replaceChildren(); return; }
-  $('[data-pick-day]').textContent = cap(longDay(state.date));
+  $('[data-pick-day]').textContent = friendlyDay(state.date, now);
   const slots = daySlots(state.date, config, state.booked, now);
   if (!slots.some(s => s.available)) {
-    box.replaceChildren(el('p', { className: 'empty' }, 'Este día ya no tiene horas libres. Vuelve atrás y elige otro.'));
+    box.replaceChildren(el('p', { className: 'empty' }, 'Este día ya no tiene horas libres. Toca «Atrás» y elige otro día.'));
     return;
   }
-  box.replaceChildren(...slots.map(s => {
-    const b = el('button', { type: 'button', className: 'slot', disabled: !s.available, textContent: s.time });
-    b.setAttribute('aria-pressed', String(state.time === s.time));
-    if (!s.available) b.setAttribute('aria-label', `${s.time}, ocupada`);
-    b.onclick = () => { state.time = s.time; go('datos'); };
-    return b;
-  }));
+  // Mañana y tarde por separado: más fácil de leer.
+  const groups = [['Mañana', slots.filter(s => s.time < '12:00')], ['Tarde', slots.filter(s => s.time >= '12:00')]];
+  const parts = [];
+  for (const [label, list] of groups) {
+    if (!list.length) continue;
+    const free = list.filter(s => s.available).length;
+    parts.push(el('h3', { className: 'period' }, `<span>${label}</span><span>${free ? `${free} libres` : 'llena'}</span>`));
+    const grid = el('div', { className: 'times' });
+    grid.append(...list.map(s => {
+      const b = el('button', { type: 'button', className: 'slot', disabled: !s.available, textContent: s.time });
+      b.setAttribute('aria-pressed', String(state.time === s.time));
+      if (!s.available) b.setAttribute('aria-label', `${s.time}, ${s.reason === 'past' ? 'ya pasó' : 'ocupada'}`);
+      b.onclick = () => { state.time = s.time; go('datos'); };
+      return b;
+    }));
+    parts.push(grid);
+  }
+  box.replaceChildren(...parts);
 }
 
 function formReady() {
@@ -135,35 +221,75 @@ function formReady() {
   return f.name.value.trim().length >= 2 && f.phone.value.replace(/\D/g, '').length >= 7;
 }
 
-function renderSummary() {
+function renderForm() {
   const s = service();
-  $('[data-sum-service]').textContent = s?.name ?? '';
-  $('[data-sum-price]').textContent = s ? money(s.price) : '';
-  $('[data-sum-day]').textContent = state.date ? cap(longDay(state.date)) : '';
-  $('[data-sum-time]').textContent = state.time ?? '';
-  $('[data-submit]').disabled = !formReady();
+  if (s && state.date && state.time) {
+    $('[data-summary-datos]').innerHTML = summaryHTML({ service: s.name, date: state.date, time: state.time, price: s.price });
+  }
+  const f = $('[data-form]').elements;
+  const ready = formReady();
+  $('[data-submit]').disabled = !ready;
+  $('[data-hint]').textContent = ready ? 'Todo listo. Toca «Confirmar cita».'
+    : f.name.value.trim().length < 2 ? 'Escribe tu nombre para confirmar.'
+    : 'Escribe tu celular (mínimo 7 números).';
 }
 
 function render() {
   const now = new Date();
+  renderStatus(now);
+  renderMine(now);
   renderServices();
   renderDays(now);
   renderTimes(now);
-  renderSummary();
+  renderForm();
 }
 
-/* ---------- Datos y envío ---------- */
+/* ---------- Mantener el calendario al día ---------- */
+
+// Si cambió el día o la hora elegida ya no vale (pasó o alguien la tomó), se vuelve al paso correcto.
+function keepFresh() {
+  const now = new Date();
+  const today = toISODate(now);
+  const newDay = today !== state.today;
+  state.today = today;
+
+  if (state.date && !bookableDays(now, config).includes(state.date)) {
+    state.date = null; state.time = null;
+    if (['hora', 'datos'].includes(state.step)) {
+      history.replaceState({ step: 'dia' }, '', '#dia');
+      show('dia', 'back');
+      toast('El día que elegiste ya pasó. Elige otro.');
+      return;
+    }
+  }
+  if (state.date && state.time && !daySlots(state.date, config, state.booked, now).find(s => s.time === state.time)?.available) {
+    state.time = null;
+    if (state.step === 'datos') {
+      history.replaceState({ step: 'hora' }, '', '#hora');
+      show('hora', 'back');
+      toast('Esa hora ya no está disponible. Elige otra.');
+      return;
+    }
+  }
+  render();
+  if (newDay) scheduleMidnight();
+}
 
 async function refresh() {
   try { state.booked = await store.list(); } catch { /* sin red: se mantiene lo último */ }
-  // Si la hora elegida se acaba de ocupar, se vuelve a elegir hora.
-  if (state.step === 'datos' && !daySlots(state.date, config, state.booked, new Date()).find(s => s.time === state.time)?.available) {
-    state.time = null;
-    show('hora', 'back');
-    return;
-  }
-  render();
+  keepFresh();
 }
+
+// Un repaso justo después de medianoche, además del de cada minuto.
+let midnightTimer;
+function scheduleMidnight() {
+  clearTimeout(midnightTimer);
+  const now = new Date();
+  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 5);
+  midnightTimer = setTimeout(refresh, next - now);
+}
+
+/* ---------- Reservar ---------- */
 
 function showError(msg) {
   const e = $('[data-error]');
@@ -187,7 +313,10 @@ async function submit(ev) {
 
   if (res.ok) {
     state.booked.push({ date: booking.date, time: booking.time });
-    $('[data-done-text]').textContent = `${booking.name}, te esperamos el ${longDay(booking.date)} a las ${booking.time} para ${s.name.toLowerCase()}.`;
+    state.last = { id: res.id, date: booking.date, time: booking.time, service: booking.service, price: booking.price };
+    addMine(storage, state.last);
+    $('[data-done-title]').textContent = `¡Listo, ${booking.name.split(' ')[0]}!`;
+    $('[data-summary-listo]').innerHTML = summaryHTML(booking);
     // "Listo" reemplaza al paso de datos: atrás no vuelve a un formulario ya enviado.
     history.replaceState({ step: 'listo' }, '', '#listo');
     show('listo', 'fwd');
@@ -198,19 +327,57 @@ async function submit(ev) {
     try { state.booked = await store.list(); } catch { /* se queda lo último */ }
     history.replaceState({ step: 'hora' }, '', '#hora');
     show('hora', 'back');
-    $('[data-pick-day]').textContent = `Alguien acaba de reservar esa hora. Elige otra · ${cap(longDay(state.date))}`;
+    toast('Alguien acaba de reservar esa hora. Elige otra.');
   } else if (res.error === 'limit') {
     showError('Ya tienes 2 citas pendientes con este celular. Si necesitas otra, escríbele a Alex.');
-    renderSummary();
+    renderForm();
   } else {
     showError('No se pudo reservar. Revisa tu conexión e inténtalo de nuevo.');
-    renderSummary();
+    renderForm();
   }
+}
+
+/* ---------- Cancelar ---------- */
+
+let pending = null;
+function askCancel(m) {
+  pending = m;
+  $('[data-sheet-text]').textContent = `${m.service}, ${friendlyDay(m.date).toLowerCase()} a las ${m.time}. La hora quedará libre para otra persona.`;
+  $('[data-sheet]').hidden = false;
+  $('[data-sheet-no]').focus();
+}
+
+function closeSheet() {
+  $('[data-sheet]').hidden = true;
+  pending = null;
+}
+
+async function confirmCancel() {
+  if (!pending) return;
+  const m = pending;
+  const yes = $('[data-sheet-yes]');
+  yes.disabled = true;
+  yes.textContent = 'Cancelando…';
+  const res = await store.cancel(m.id);
+  yes.disabled = false;
+  yes.textContent = 'Sí, cancelar';
+  if (!res.ok && res.error !== 'notfound') { toast('No se pudo cancelar. Revisa tu conexión.'); return; }
+
+  // notfound: Alex ya la había borrado; igual se quita de "mis citas".
+  removeMine(storage, m.id);
+  state.booked = state.booked.filter(b => !(b.date === m.date && b.time === m.time));
+  closeSheet();
+  if (state.last?.id === m.id) state.last = null;
+  if (state.step !== 'inicio') { history.replaceState({ step: 'inicio' }, '', location.pathname); show('inicio', 'back'); }
+  else render();
+  toast('Cita cancelada. La hora quedó libre.');
+  refresh();
 }
 
 function restart() {
   Object.assign(state, { service: null, date: null, time: null });
   $('[data-form]').reset();
+  showError('');
   history.replaceState({ step: 'inicio' }, '', location.pathname);
   show('inicio', 'back');
 }
@@ -221,11 +388,20 @@ fillStatic();
 document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => go(b.dataset.go)));
 $('[data-back]').addEventListener('click', back);
 $('[data-form]').addEventListener('submit', submit);
-$('[data-form]').addEventListener('input', renderSummary);
+$('[data-form]').addEventListener('input', renderForm);
 $('[data-restart]').addEventListener('click', restart);
+$('[data-cancel-last]').addEventListener('click', () => state.last && askCancel(state.last));
+$('[data-sheet-yes]').addEventListener('click', confirmCancel);
+$('[data-sheet-no]').addEventListener('click', closeSheet);
+$('[data-sheet]').addEventListener('click', e => { if (e.target === e.currentTarget) closeSheet(); });
+addEventListener('keydown', e => { if (e.key === 'Escape' && !$('[data-sheet]').hidden) closeSheet(); });
 
 history.replaceState({ step: 'inicio' }, '', location.pathname);
 show('inicio');
 refresh();
+scheduleMidnight();
 setInterval(refresh, 60_000);
+// En el celular la pestaña se duerme: al volver se actualiza todo.
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
 addEventListener('focus', refresh);
+addEventListener('pageshow', e => { if (e.persisted) refresh(); });

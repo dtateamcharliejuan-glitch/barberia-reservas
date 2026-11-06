@@ -6,22 +6,25 @@
 <meta name="page-type" content="place">
 <meta name="site-kind" content="other">
 <meta name="page-kind" content="place">
-<meta name="theme-color" content="#f4efe6">
+<meta name="theme-color" content="#121010">
+<meta name="color-scheme" content="dark">
 <title>Alex Barber · Reserva tu cita</title>
 <meta name="description" content="Barbería en Floralia. Reserva tu cita en 4 pasos, sin crear cuenta.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231b1916'/><path d='M9 23 23 9M12 9h11v11' stroke='%23f4efe6' stroke-width='3' fill='none' stroke-linecap='round'/></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='16' fill='%23d4a65a'/><text x='16' y='21' font-family='Arial' font-weight='700' font-size='13' text-anchor='middle' fill='%23121010'>AB</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://images.unsplash.com">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-<!-- Kind: place (barbería). Sin fotos ni ubicación por petición del cliente. Flujo de una pantalla por paso. -->
+<!-- Kind: place (barbería). Flujo de una pantalla por paso, pensado para cualquier persona. -->
 
-<header class="top">
+<header class="top" data-top>
   <div class="top-row">
     <button class="back" type="button" data-back aria-label="Volver al paso anterior" hidden>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 8 12l7 7"/></svg>
+      <span>Atrás</span>
     </button>
     <span class="brand" data-name>Alex Barber</span>
     <span class="step-count" data-count hidden></span>
@@ -29,19 +32,29 @@
   <div class="progress" data-progress hidden><span></span></div>
 </header>
 
-<main class="stage" data-stage>
+<main class="stage">
 
   <!-- Inicio -->
-  <section class="screen" data-screen="inicio" aria-labelledby="t-inicio">
-    <div class="screen-body">
-      <p class="eyebrow">Barbería en <span data-district>Floralia</span></p>
+  <section class="screen screen-home" data-screen="inicio" aria-labelledby="t-inicio">
+    <div class="hero">
+      <img class="hero-img" data-hero alt="" width="900" height="600" fetchpriority="high">
+    </div>
+    <div class="screen-body home-body">
+      <!-- Logo: cuando Alex lo mande, poner la ruta en config.logo y se usa aquí. -->
+      <div class="logo" data-logo aria-hidden="true">AB</div>
       <h1 id="t-inicio" data-name>Alex Barber</h1>
-      <p class="lead">Reserva tu cita en 4 pasos, sin crear cuenta.</p>
-      <p class="hours"><span class="live" aria-hidden="true"></span><span data-hours>Lun–Sáb · 09:00–19:00</span></p>
+      <p class="place">Barbería en <span data-district>Floralia</span></p>
+      <p class="status" data-status><span class="dot-live"></span><span data-status-text>Lun–Sáb · 09:00–19:00</span></p>
+
+      <div class="mine" data-mine hidden></div>
+
+      <h2 class="list-title">Servicios y precios</h2>
       <ul class="price-list" data-price-list></ul>
+      <p class="credit">Fotos: Unsplash</p>
     </div>
     <div class="screen-foot">
       <button class="btn btn-block" type="button" data-go="servicio">Reservar cita</button>
+      <p class="foot-hint">Sin crear cuenta · 4 pasos</p>
     </div>
   </section>
 
@@ -49,6 +62,7 @@
   <section class="screen" data-screen="servicio" aria-labelledby="t-servicio" hidden>
     <div class="screen-body">
       <h2 id="t-servicio">¿Qué te vas a hacer?</h2>
+      <p class="sub">Toca el servicio que quieres.</p>
       <div class="options" data-services></div>
     </div>
   </section>
@@ -57,9 +71,11 @@
   <section class="screen" data-screen="dia" aria-labelledby="t-dia" hidden>
     <div class="screen-body">
       <h2 id="t-dia">¿Qué día?</h2>
-      <p class="sub" data-pick-service></p>
+      <p class="sub">Toca un día. Los que dicen <em>lleno</em> ya no tienen horas.</p>
+      <p class="chosen" data-pick-service></p>
       <div class="weekdays" aria-hidden="true"><span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span></div>
       <div class="days" data-days></div>
+      <p class="note">Domingos cerrado.</p>
     </div>
   </section>
 
@@ -67,9 +83,9 @@
   <section class="screen" data-screen="hora" aria-labelledby="t-hora" hidden>
     <div class="screen-body">
       <h2 id="t-hora">¿A qué hora?</h2>
-      <p class="sub" data-pick-day></p>
-      <p class="legend-row"><span class="dot free"></span>Libre <span class="dot taken"></span>Ocupada</p>
-      <div class="times" data-times aria-live="polite"></div>
+      <p class="sub">Toca una hora libre.</p>
+      <p class="chosen" data-pick-day></p>
+      <div data-times aria-live="polite"></div>
     </div>
   </section>
 
@@ -78,44 +94,53 @@
     <form class="screen-form" data-form novalidate>
       <div class="screen-body">
         <h2 id="t-datos">Tus datos</h2>
-        <div class="summary card">
-          <dl>
-            <dt>Servicio</dt><dd data-sum-service></dd>
-            <dt>Día</dt><dd data-sum-day></dd>
-            <dt>Hora</dt><dd data-sum-time></dd>
-            <dt>Precio</dt><dd data-sum-price></dd>
-          </dl>
-        </div>
+        <p class="sub">Revisa tu cita y escribe tu nombre y celular.</p>
+        <div class="summary card" data-summary-datos></div>
         <label class="field">
           <span>Tu nombre</span>
-          <input name="name" autocomplete="name" required minlength="2" maxlength="60" enterkeyhint="next">
+          <input name="name" autocomplete="name" required minlength="2" maxlength="60" enterkeyhint="next" placeholder="Cómo te llamas">
         </label>
         <label class="field">
           <span>Tu celular</span>
-          <input name="phone" type="tel" inputmode="tel" autocomplete="tel" required maxlength="20" enterkeyhint="done">
+          <input name="phone" type="tel" inputmode="tel" autocomplete="tel" required maxlength="20" enterkeyhint="done" placeholder="Para avisarte si hay un cambio">
         </label>
         <p class="error" data-error hidden></p>
       </div>
       <div class="screen-foot">
         <button class="btn btn-block" type="submit" data-submit disabled>Confirmar cita</button>
+        <p class="foot-hint" data-hint>Escribe tu nombre y celular para confirmar.</p>
       </div>
     </form>
   </section>
 
   <!-- Listo -->
   <section class="screen" data-screen="listo" aria-labelledby="t-listo" hidden>
-    <div class="screen-body center">
+    <div class="screen-body done-body">
       <div class="check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5 10 17 19 7"/></svg></div>
-      <h2 id="t-listo">¡Cita reservada!</h2>
-      <p class="done-text" data-done-text></p>
-      <p class="sub">Si no puedes venir, avísale a Alex para liberar la hora.</p>
+      <h2 id="t-listo" data-done-title>¡Cita reservada!</h2>
+      <p class="sub">Te esperamos. Guarda esta pantalla o hazle captura.</p>
+      <div class="summary card" data-summary-listo></div>
+      <p class="note">¿Te equivocaste o no puedes venir? Cancélala aquí y la hora queda libre para otro.</p>
     </div>
     <div class="screen-foot">
-      <button class="btn btn-ghost btn-block" type="button" data-restart>Volver al inicio</button>
+      <button class="btn btn-block" type="button" data-restart>Listo, volver al inicio</button>
+      <button class="btn btn-danger btn-block" type="button" data-cancel-last>Cancelar esta cita</button>
     </div>
   </section>
 
 </main>
+
+<!-- Confirmación para cancelar -->
+<div class="sheet-backdrop" data-sheet hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <h2 id="sheet-title" class="sheet-title">¿Cancelar tu cita?</h2>
+    <p class="sheet-text" data-sheet-text></p>
+    <button class="btn btn-danger-solid btn-block" type="button" data-sheet-yes>Sí, cancelar</button>
+    <button class="btn btn-ghost btn-block" type="button" data-sheet-no>No, mantenerla</button>
+  </div>
+</div>
+
+<div class="toast" data-toast role="status" aria-live="polite" hidden></div>
 
 <p class="demo-note" data-demo-note hidden>Demo: las reservas se guardan solo en este navegador.</p>
 
