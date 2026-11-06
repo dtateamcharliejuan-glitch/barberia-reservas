@@ -1,4 +1,4 @@
-# Alex Barber · reservas sin login
+# Alex Studios · reservas sin login
 
 Reserva paso a paso, una pantalla por paso: servicio → día → hora libre → nombre y celular → listo.
 Quien reserva puede **cancelar** desde la pantalla de confirmación o desde «Tu próxima cita» en el inicio (solo desde el celular con el que reservó).

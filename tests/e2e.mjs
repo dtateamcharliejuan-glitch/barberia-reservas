@@ -35,8 +35,8 @@ for (const vp of [{ name: 'movil', width: 390, height: 844, isMobile: true, hasT
   const shot = async n => { await settle(page); await page.screenshot({ path: `${SHOTS}${vp.name}-${n}.png` }); };
 
   await check(`[${vp.name}] inicio: nombre, logo, ilustración animada, barrio y precios en pesos`, async () => {
-    assert.equal(await page.locator('h1').innerText(), 'Alex Barber');
-    assert.equal(await page.locator('[data-logo]').innerText(), 'AB');
+    assert.equal(await page.locator('h1').innerText(), 'Alex Studios');
+    assert.equal(await page.locator('[data-logo]').innerText(), 'AS');
     assert.ok(await page.locator('[data-hero] svg.scene').isVisible(), 'la ilustración se ve');
     assert.equal(await page.locator('.blade-top').evaluate(e => getComputedStyle(e).animationName), 'snip-top', 'las tijeras se mueven');
     assert.equal(await page.locator('img').count(), 0, 'sin fotos de stock');

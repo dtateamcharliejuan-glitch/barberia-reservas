@@ -165,6 +165,8 @@ h1 { font-size: clamp(2.8rem, 14vw, 4.6rem); }
 .map iframe { display: block; width: 100%; height: 100%; border: 0; filter: invert(.9) hue-rotate(180deg) saturate(.55) brightness(.95); }
 .link { display: inline-flex; align-items: center; min-height: 44px; color: var(--accent); font-weight: 600; text-decoration: underline; text-underline-offset: 4px; }
 .done-where { justify-content: center; margin-top: 16px; }
+.where .where-line { flex-wrap: nowrap; align-items: flex-start; }
+.where .pin { margin-top: 2px; }
 
 .icon-tile { width: 56px; height: 56px; border-radius: 14px; display: grid; place-items: center; background: var(--surface-2); border: 1px solid var(--line); color: var(--accent); transition: transform .25s var(--ease), background-color .2s; }
 .icon-tile svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
@@ -399,7 +401,8 @@ body[data-step="inicio"] .demo-note { padding-bottom: calc(var(--foot-h) + 8px);
   .price-list small { display: none; } /* lo que incluye cada servicio se ve en el paso 1 */
   .mine { margin-top: 14px; }
   .home-intro.screen-body { padding-top: 28px; }
-  .how li { padding: 12px 14px; }
+  .how li { padding: 10px 14px; }
+  .home-intro .where-text { gap: 6px; }
   .home-intro .where { margin-top: 12px; padding: 12px; }
 }
 @media (min-width: 1024px) {

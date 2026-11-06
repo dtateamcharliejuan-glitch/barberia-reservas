@@ -1,9 +1,9 @@
-import { config, money } from './config.js?v=43dbc32b';
-import { heroScene, ICONS } from './art.js?v=43dbc32b';
-import { to12h, splitTime, nowIn } from './time.js?v=43dbc32b';
-import { bookableDays, daySlots, toISODate } from './slots.js?v=43dbc32b';
-import { createStore } from './store.js?v=43dbc32b';
-import { addMine, listMine, removeMine } from './mine.js?v=43dbc32b';
+import { config, money } from './config.js?v=6f482298';
+import { heroScene, ICONS } from './art.js?v=6f482298';
+import { to12h, splitTime, nowIn } from './time.js?v=6f482298';
+import { bookableDays, daySlots, toISODate } from './slots.js?v=6f482298';
+import { createStore } from './store.js?v=6f482298';
+import { addMine, listMine, removeMine } from './mine.js?v=6f482298';
 
 const $ = sel => document.querySelector(sel);
 // La hora de la barbería (Colombia), aunque el celular tenga otra zona horaria.
@@ -141,7 +141,9 @@ function fillStatic() {
 function fillWhere() {
   const area = `${config.district}, ${config.city}`;
   const query = `${config.address ? `${config.address}, ` : ''}${area}, Colombia`;
-  document.querySelectorAll('[data-address]').forEach(n => (n.textContent = config.address ? `${config.address} · ${area}` : `Barrio ${area}`));
+  // El número ("# 5N-45") no se parte en dos líneas.
+  const street = config.address.replace(/ ?# ?/g, ' # ').replace(/-/g, '‑');
+  document.querySelectorAll('[data-address]').forEach(n => (n.textContent = config.address ? `${street}00a0· ${area}` : `Barrio ${area}`));
   document.querySelectorAll('.pin').forEach(n => (n.innerHTML = ICON.pin));
   document.querySelectorAll('[data-directions]').forEach(a => (a.href = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(query)}`));
   $('[data-map]').replaceChildren(el('iframe', {

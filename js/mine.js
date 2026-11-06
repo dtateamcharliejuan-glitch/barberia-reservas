@@ -1,5 +1,5 @@
 // "Mis citas": las reservas hechas desde este celular, con el id que permite cancelarlas.
-import { toISODate } from './slots.js?v=43dbc32b';
+import { toISODate } from './slots.js?v=6f482298';
 
 const KEY = 'barberia.mine';
 

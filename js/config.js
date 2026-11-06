@@ -1,13 +1,13 @@
 // Todo lo que cambia de una barbería a otra está aquí.
 // Si usas el modo real, copia también servicios y horario arriba de apps-script/Code.gs.
 export const config = {
-  name: 'Alex Barber',
-  initials: 'AB', // se ve mientras no haya logo
+  name: 'Alex Studios',
+  initials: 'AS', // se ve mientras no haya logo
   logo: '', // ruta del logo cuando lo tengamos, por ejemplo 'img/logo.png'
   district: 'Floralia',
   city: 'Cali',
   // Dirección para el mapa y "Cómo llegar", por ejemplo 'Calle 00 # 00-00'. Vacío = el mapa muestra el barrio.
-  address: '',
+  address: 'Calle 72C Norte # 5N-45',
   timeZone: 'America/Bogota', // el calendario usa la hora de Colombia
 
   // Días: 0 = domingo, 1 = lunes … 6 = sábado.

@@ -136,5 +136,5 @@ function cancel_(id) {
 
 // Ejecútala una vez desde el editor para dar permisos y probar el aviso.
 function probarAviso() {
-  ntfy_('Prueba', 'Los avisos de Alex Barber funcionan ✂️', 'scissors');
+  ntfy_('Prueba', 'Los avisos de Alex Studios funcionan ✂️', 'scissors');
 }
