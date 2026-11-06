@@ -1,13 +1,17 @@
-// Google Apps Script: guarda las citas en la hoja y avisa al celular por ntfy.
+// Google Apps Script: guarda las citas en la hoja y avisa al barbero, todo con Google y gratis:
+//   - Gmail: cita nueva, cancelada y recordatorio 30 min antes.
+//   - Google Calendar: cada cita es un evento con alarma en el celular 30 min antes.
 // Se pega en Extensiones → Apps Script de la hoja de cálculo (ver README).
 
-// Tema privado de ntfy: pon algo largo y difícil de adivinar, y suscríbete a él en la app ntfy.
-// No subas el tema real a GitHub: cámbialo solo aquí, en el editor de Apps Script.
-const NTFY_TOPIC = 'cambia-esto-barberia-xxxxxxxx';
-
-// Los avisos también llegan por correo de Gmail (gratis, hasta 100 al día).
-// Vacío = al correo de la cuenta de Google dueña de la hoja. '-' = sin correo.
+// Correo que recibe los avisos. Vacío = la cuenta de Google dueña de la hoja. '-' = sin correo.
 const NOTIFY_EMAIL = '';
+
+// true = cada cita se agrega al Google Calendar de la cuenta dueña de la hoja.
+const USE_CALENDAR = true;
+
+// Opcional: tema de ntfy. Vacío = apagado. ntfy.sh gratis limita los mensajes por servidor y
+// Google envía desde servidores compartidos, así que casi siempre responde 429 (cupo agotado).
+const NTFY_TOPIC = '';
 
 // Deben coincidir con js/config.js. El servidor no se fía de lo que manda el navegador.
 const SERVICES = { 'Corte': 18000, 'Corte + cejas': 20000, 'Corte + barba': 25000 };
@@ -20,8 +24,8 @@ const DAYS_AHEAD = 14;
 const MAX_PER_PHONE = 2; // citas futuras por número de celular
 
 const SHEET_NAME = 'Citas';
-const HEADERS = ['Fecha', 'Hora', 'Servicio', 'Precio', 'Nombre', 'Teléfono', 'Nota', 'Creada', 'Id', 'Aviso 30 min'];
-const COL = { date: 0, time: 1, service: 2, name: 4, phone: 5, note: 6, id: 8, reminded: 9 };
+const HEADERS = ['Fecha', 'Hora', 'Servicio', 'Precio', 'Nombre', 'Teléfono', 'Nota', 'Creada', 'Id', 'Aviso 30 min', 'Evento'];
+const COL = { date: 0, time: 1, service: 2, name: 4, phone: 5, note: 6, id: 8, reminded: 9, event: 10 };
 const REMIND_BEFORE = 30; // minutos antes de la cita en que le llega el aviso a Alex
 
 // El "panel" de Alex: en la pestaña Bloqueos escribe un día (y si quiere, desde/hasta qué hora)
@@ -155,6 +159,7 @@ function correo_(title, text) {
 // Se publica en JSON: así los títulos con tildes o emojis ("José", "✂️") no rompen el envío.
 // Devuelve el código y la respuesta de ntfy (200 = enviado) para poder revisarlo en el registro.
 function ntfy_(title, text, tag) {
+  if (!NTFY_TOPIC) return 'ntfy apagado';
   try {
     const res = UrlFetchApp.fetch('https://ntfy.sh/', {
       method: 'post',
@@ -205,7 +210,8 @@ function book_(b) {
     }
     const clean = v => v.replace(/^[=+\-@]/, "'$&"); // evita fórmulas inyectadas en la hoja
     id = Utilities.getUuid();
-    sheet_().appendRow([b.date, b.time, b.service, price, clean(name), phone, clean(note), new Date(), id]);
+    const event = calendarAdd_(b.date, b.time, `${name} · ${b.service}`, `Cel: ${phone}${note ? `\nNota: ${note}` : ''}`);
+    sheet_().appendRow([b.date, b.time, b.service, price, clean(name), phone, clean(note), new Date(), id, '', event]);
   } finally {
     lock.releaseLock();
   }
@@ -226,11 +232,33 @@ function cancel_(id) {
     if (i < 0) return json_({ ok: false, error: 'notfound' });
     row = rows[i];
     sheet_().deleteRow(i + 2); // +1 por la cabecera, +1 porque las filas empiezan en 1
+    calendarRemove_(row[COL.event]);
   } finally {
     lock.releaseLock();
   }
   aviso_('Cita cancelada', `${row[COL.name]} canceló ${row[COL.service]}\n${fecha_(row[COL.date])} a las ${to12h_(row[COL.time])}`, 'x');
   return json_({ ok: true });
+}
+
+// Google Calendar: evento de la cita con alarma 30 min antes. Devuelve su id ('' si no se pudo).
+function calendarAdd_(date, time, title, text) {
+  if (!USE_CALENDAR) return '';
+  try {
+    const d = date.split('-').map(Number);
+    const t = time.split(':').map(Number);
+    const start = new Date(d[0], d[1] - 1, d[2], t[0], t[1]); // hora de Bogotá (zona horaria del proyecto)
+    const ev = CalendarApp.getDefaultCalendar().createEvent('✂️ ' + title, start, new Date(start.getTime() + SLOT_MINUTES * 60000), { description: text });
+    ev.addPopupReminder(REMIND_BEFORE);
+    return ev.getId();
+  } catch (err) {
+    console.warn('Calendar falló: ' + err); // la cita ya está en la hoja aunque falle el calendario
+    return '';
+  }
+}
+
+function calendarRemove_(eventId) {
+  if (!USE_CALENDAR || !eventId) return;
+  try { const ev = CalendarApp.getEventById(eventId); if (ev) ev.deleteEvent(); } catch (err) { console.warn('Calendar falló: ' + err); }
 }
 
 // Cada 5 minutos (reloj de Google, gratis): avisa a Alex de las citas que empiezan en 30 minutos o menos.
@@ -255,6 +283,7 @@ function recordar() {
 // de 30 minutos, da permisos y manda un aviso de prueba.
 function preparar() {
   sheet_();
+  if (USE_CALENDAR) CalendarApp.getDefaultCalendar(); // pide el permiso del calendario
   blockSheet_();
   if (!ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'recordar')) {
     ScriptApp.newTrigger('recordar').timeBased().everyMinutes(5).create();

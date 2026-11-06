@@ -22,16 +22,16 @@ Todo está en [`js/config.js`](js/config.js): nombre, barrio, dirección del map
 
 ## Montarlo de verdad (unos 15 minutos, una sola vez)
 
-### 1. Aviso al celular (ntfy)
-1. Instala la app **ntfy** en el celular del barbero (Android o iPhone, gratis).
-2. Pulsa **+** y suscríbete a un tema con un nombre largo e inventado, por ejemplo `alexbarber-7f3k9q2x`. Quien conozca el nombre puede leer los avisos, así que no uses algo fácil de adivinar.
+### 1. Avisos al celular (todo de Google, gratis)
+En el celular del barbero, con su cuenta de Google: app **Gmail** con notificaciones activadas y app **Google Calendar**.
+No hay que instalar nada más. (ntfy quedó apagado: el plan gratis de ntfy.sh corta los mensajes que salen de los servidores compartidos de Google con «429 daily message quota reached».)
 
 ### 2. La hoja de citas (Google Sheets)
 1. Con la cuenta de Google del barbero, crea una hoja de cálculo nueva.
 2. **Extensiones → Apps Script**. Borra lo que haya y pega [`apps-script/Code.gs`](apps-script/Code.gs).
-3. Cambia `NTFY_TOPIC` por el tema del paso 1 y guarda. (No subas el tema real a GitHub.)
+3. Guarda (Ctrl+S).
 4. En **Configuración del proyecto** (rueda dentada) pon la zona horaria **(GMT-05:00) Bogotá**.
-5. Elige la función `preparar` y pulsa **Ejecutar**. Acepta los permisos: crea las pestañas **Citas** y **Bloqueos** y tiene que llegar una notificación al celular.
+5. Elige la función `preparar` y pulsa **Ejecutar**. Acepta los permisos (hoja, Gmail, Calendar y reloj): crea las pestañas **Citas** y **Bloqueos** y llega un correo «Prueba · Alex Studios».
 6. **Implementar → Nueva implementación → Aplicación web**:
    - Ejecutar como: **Yo**
    - Quién tiene acceso: **Cualquier usuario**
@@ -39,7 +39,7 @@ Todo está en [`js/config.js`](js/config.js): nombre, barrio, dirección del map
 
 Las citas aparecen en la pestaña **Citas** de la hoja (el barbero la ve en la app de Google Sheets).
 
-**Avisos al barbero** (por ntfy y por correo de Gmail, los dos gratis): cita nueva (con la nota del cliente), cita cancelada y **recordatorio 30 minutos antes** de cada cita. El recordatorio lo revisa un reloj de Google cada 5 minutos; `preparar` lo deja programado. El correo va a la cuenta dueña de la hoja (se cambia en `NOTIFY_EMAIL`).
+**Avisos al barbero** (Google, gratis): correo de Gmail por cita nueva (con la nota del cliente), cita cancelada y **recordatorio 30 minutos antes**; además cada cita queda como evento en su **Google Calendar** con alarma 30 min antes, y se borra si el cliente cancela. El recordatorio por correo lo revisa un reloj de Google cada 5 minutos; `preparar` lo deja programado. El correo va a la cuenta dueña de la hoja (se cambia en `NOTIFY_EMAIL`).
 
 **Para el cliente:** botón de **WhatsApp** al chat del barbero (`whatsapp` en `js/config.js`, enlace oficial `wa.me`) y botón **Agregar a mi calendario**: en iPhone abre el Calendario con alarma 30 min antes; en Android, Google Calendar.
 **Para cancelar una cita, borra su fila**: la hora vuelve a quedar libre en la web. Si el cliente cancela desde la web, la fila se borra sola y llega un aviso «Cita cancelada».

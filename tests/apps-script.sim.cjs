@@ -2,7 +2,8 @@
 const fs = require('fs'), vm = require('vm');
 const pad = n => String(n).padStart(2, '0');
 const NOW = new Date(2026, 10, 5, 10, 10); // jueves 5 de noviembre, 10:10 a. m.
-const sheets = {}, sent = [], triggers = [], mails = [];
+const sheets = {}, sent = [], triggers = [], mails = [], events = {}, ntfy = [];
+let eventN = 0;
 let uuid = 0;
 const range = sh => ({ setNumberFormat() { return this; }, setDataValidation() { return this; } });
 const makeSheet = () => {
@@ -23,11 +24,16 @@ const validation = { requireDate() { return this; }, requireValueInList() { retu
 const ctx = { Date,
   Utilities: { formatDate: (d, tz, f) => { const x = Math.abs(d - Date.now()) < 60000 ? NOW : d; /* new Date() del script = el "ahora" simulado */ return f === 'yyyy-MM-dd' ? `${x.getFullYear()}-${pad(x.getMonth() + 1)}-${pad(x.getDate())}` : `${pad(NOW.getHours())}:${pad(NOW.getMinutes())}`; }, getUuid: () => `00000000-0000-4000-8000-${String(++uuid).padStart(12, '0')}` },
   Session: { getScriptTimeZone: () => 'America/Bogota', getEffectiveUser: () => ({ getEmail: () => 'duenio@gmail.com' }) },
-  MailApp: { sendEmail: (to, subject, body) => mails.push({ to, subject, body }) },
+  // `sent` = avisos por Gmail (el canal principal); el título es el asunto sin " · Alex Studios".
+  MailApp: { sendEmail: (to, subject, body) => { mails.push({ to, subject, body }); sent.push({ title: subject.replace(' · Alex Studios', ''), text: body }); } },
+  CalendarApp: {
+    getDefaultCalendar: () => ({ createEvent: (title, start, end, o) => { const id = `ev${++eventN}`; events[id] = { title, start, end, o, reminders: [] }; return { getId: () => id, addPopupReminder: m => events[id].reminders.push(m) }; } }),
+    getEventById: id => (events[id] ? { deleteEvent: () => delete events[id] } : null),
+  },
   SpreadsheetApp: { getActiveSpreadsheet: () => ({ getSheetByName: n => sheets[n] ?? null, insertSheet: n => (sheets[n] = makeSheet()) }), newDataValidation: () => validation },
   LockService: { getScriptLock: () => ({ waitLock() {}, tryLock: () => true, releaseLock() {} }) },
   ScriptApp: { getProjectTriggers: () => triggers, newTrigger: fn => ({ timeBased: () => ({ everyMinutes: m => ({ create: () => triggers.push({ fn, m, getHandlerFunction: () => fn }) }) }) }) },
-  UrlFetchApp: { fetch: (u, o) => { const j = JSON.parse(o.payload); sent.push({ title: j.title, text: j.message, url: u, topic: j.topic }); return { getResponseCode: () => 200, getContentText: () => '{}' }; } },
+  UrlFetchApp: { fetch: (u, o) => { const j = JSON.parse(o.payload); ntfy.push(j); return { getResponseCode: () => 200, getContentText: () => '{}' }; } },
   ContentService: { createTextOutput: t => ({ setMimeType: () => JSON.parse(t) }), MimeType: { JSON: 1 } } };
 vm.createContext(ctx); vm.runInContext(fs.readFileSync(require('path').join(__dirname, '../apps-script/Code.gs'), 'utf8'), ctx);
 const post = b => ctx.doPost({ postData: { contents: JSON.stringify(b) } });
@@ -54,7 +60,13 @@ t('get no expone nombres, celulares ni notas', !/Ana|3001234567|Degradado/.test(
 t('cancelar id falso → notfound', post({ action: 'cancel', id: 'x' }).error === 'notfound');
 const n = citas().length; t('cancelar id real libera la fila', post({ action: 'cancel', id: r1.id }).ok && citas().length === n - 1 && !citas().some(r => r[8] === r1.id));
 t('el aviso dice la fecha como en Colombia', sent.some(s => s.text.includes('viernes 6 de noviembre a las 10:00 a. m.')));
-t('cada aviso llega también al Gmail del dueño', mails.length === sent.length && mails.every(m => m.to === 'duenio@gmail.com') && mails[0].subject === 'Nueva cita · Alex Studios');
+t('cada aviso llega al Gmail del dueño', mails.every(m => m.to === 'duenio@gmail.com') && mails[0].subject === 'Nueva cita · Alex Studios');
+t('cada cita queda en Google Calendar con alarma 30 min antes', (() => {
+  const ev = Object.values(events).find(e => e.title === '✂️ Ana · Corte + barba');
+  return ev && ev.start.getHours() === 17 && ev.start.getMinutes() === 0 && (ev.end - ev.start) === 30 * 60000 && ev.reminders[0] === 30 && /Cel: 3009990000/.test(ev.o.description);
+})());
+t('el id del evento se guarda en la hoja', citas().slice(1).every(r => /^ev\d+$/.test(r[10])));
+t('cancelar la cita borra su evento del calendario', !Object.values(events).some(e => e.title === '✂️ Ana · Corte' && e.start.getHours() === 10 && e.start.getMinutes() === 0 && e.start.getDate() === 6));
 t('avisos enviados: nueva y cancelada', sent.some(s => s.title === 'Nueva cita') && sent.some(s => s.title === 'Cita cancelada'));
 
 // Bloqueos: el "panel" de Alex en la hoja.
@@ -82,4 +94,4 @@ t('no avisa la de dentro de 50 min todavía', !reminders.some(s => s.title.inclu
 t('la fila queda marcada', citas().find(r => r[4] === 'Pedro')[9] === 'Enviado');
 ctx.recordar();
 t('no repite el aviso', sent.length === before + 1);
-t('ntfy se publica en JSON al tema (tildes y emojis no rompen)', sent.every(s => s.url === 'https://ntfy.sh/' && s.topic === 'cambia-esto-barberia-xxxxxxxx'));
+t('ntfy apagado por defecto (Google agota el cupo gratis)', ntfy.length === 0);
