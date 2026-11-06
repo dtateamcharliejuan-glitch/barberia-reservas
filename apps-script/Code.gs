@@ -5,6 +5,10 @@
 // No subas el tema real a GitHub: cámbialo solo aquí, en el editor de Apps Script.
 const NTFY_TOPIC = 'cambia-esto-barberia-xxxxxxxx';
 
+// Los avisos también llegan por correo de Gmail (gratis, hasta 100 al día).
+// Vacío = al correo de la cuenta de Google dueña de la hoja. '-' = sin correo.
+const NOTIFY_EMAIL = '';
+
 // Deben coincidir con js/config.js. El servidor no se fía de lo que manda el navegador.
 const SERVICES = { 'Corte': 18000, 'Corte + cejas': 20000, 'Corte + barba': 25000 };
 const OPEN_DAYS = [1, 2, 3, 4, 5, 6]; // 0 = domingo
@@ -16,8 +20,9 @@ const DAYS_AHEAD = 14;
 const MAX_PER_PHONE = 2; // citas futuras por número de celular
 
 const SHEET_NAME = 'Citas';
-const HEADERS = ['Fecha', 'Hora', 'Servicio', 'Precio', 'Nombre', 'Teléfono', 'Nota', 'Creada', 'Id'];
-const COL = { date: 0, time: 1, service: 2, name: 4, phone: 5, note: 6, id: 8 };
+const HEADERS = ['Fecha', 'Hora', 'Servicio', 'Precio', 'Nombre', 'Teléfono', 'Nota', 'Creada', 'Id', 'Aviso 30 min'];
+const COL = { date: 0, time: 1, service: 2, name: 4, phone: 5, note: 6, id: 8, reminded: 9 };
+const REMIND_BEFORE = 30; // minutos antes de la cita en que le llega el aviso a Alex
 
 // El "panel" de Alex: en la pestaña Bloqueos escribe un día (y si quiere, desde/hasta qué hora)
 // en que no atiende, por ejemplo un día de tatuajes. Sin horas = el día entero.
@@ -104,6 +109,10 @@ function rows_() {
 const minutes_ = hhmm => { const p = hhmm.split(':').map(Number); return p[0] * 60 + p[1]; };
 const hhmm_ = min => String(Math.floor(min / 60)).padStart(2, '0') + ':' + String(min % 60).padStart(2, '0');
 const to12h_ = hhmm => { const p = hhmm.split(':').map(Number); return (p[0] % 12 || 12) + ':' + String(p[1]).padStart(2, '0') + (p[0] < 12 ? ' a. m.' : ' p. m.'); };
+// "2026-11-12" → "jueves 12 de noviembre", como se dice en Colombia.
+const DIAS_ = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+const MESES_ = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const fecha_ = iso => { const p = iso.split('-').map(Number); return DIAS_[new Date(p[0], p[1] - 1, p[2]).getDay()] + ' ' + p[2] + ' de ' + MESES_[p[1] - 1]; };
 const digits_ = s => String(s || '').replace(/\D/g, '');
 const today_ = () => Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
 const nowMin_ = () => minutes_(Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'HH:mm'));
@@ -127,6 +136,20 @@ function validSlot_(date, time) {
 
 function json_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+
+// Aviso doble: notificación ntfy al celular y correo de Gmail. Si uno falla, el otro igual sale.
+function aviso_(title, text, tag) {
+  ntfy_(title, text, tag);
+  correo_(title, text);
+}
+
+function correo_(title, text) {
+  if (NOTIFY_EMAIL === '-') return;
+  try {
+    const to = NOTIFY_EMAIL || Session.getEffectiveUser().getEmail();
+    MailApp.sendEmail(to, title + ' · Alex Studios', text + '\n\nLas citas están en la pestaña Citas de tu hoja de Google.');
+  } catch (err) { /* sin cupo de correo o sin permiso: queda el aviso ntfy */ }
 }
 
 function ntfy_(title, text, tag) {
@@ -180,7 +203,7 @@ function book_(b) {
     lock.releaseLock();
   }
 
-  ntfy_('Nueva cita', `${name} · ${b.service}\n${b.date} a las ${to12h_(b.time)}\nCel: ${phone}${note ? `\nNota: ${note}` : ''}`, 'scissors');
+  aviso_('Nueva cita', `${name} · ${b.service}\n${fecha_(b.date)} a las ${to12h_(b.time)}\nCel: ${phone}${note ? `\nNota: ${note}` : ''}`, 'scissors');
   return json_({ ok: true, id: id });
 }
 
@@ -199,17 +222,39 @@ function cancel_(id) {
   } finally {
     lock.releaseLock();
   }
-  ntfy_('Cita cancelada', `${row[COL.name]} canceló ${row[COL.service]}\n${row[COL.date]} a las ${to12h_(row[COL.time])}`, 'x');
+  aviso_('Cita cancelada', `${row[COL.name]} canceló ${row[COL.service]}\n${fecha_(row[COL.date])} a las ${to12h_(row[COL.time])}`, 'x');
   return json_({ ok: true });
 }
 
-// Ejecútala una vez desde el editor: crea las pestañas Citas y Bloqueos, da permisos y manda un aviso de prueba.
+// Cada 5 minutos (reloj de Google, gratis): avisa a Alex de las citas que empiezan en 30 minutos o menos.
+function recordar() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) return;
+  try {
+    const today = today_();
+    const now = nowMin_();
+    rows_().forEach((r, i) => {
+      const left = minutes_(r[COL.time]) - now;
+      if (r[COL.date] !== today || r[COL.reminded] || left <= 0 || left > REMIND_BEFORE) return;
+      aviso_(`En ${left} min: ${r[COL.name]}`, `${r[COL.service]} a las ${to12h_(r[COL.time])}\nCel: ${r[COL.phone]}${r[COL.note] ? `\nNota: ${r[COL.note]}` : ''}`, 'alarm_clock');
+      sheet_().getRange(i + 2, COL.reminded + 1).setValue('Enviado');
+    });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// Ejecútala una vez desde el editor: crea las pestañas Citas y Bloqueos, pone en marcha el aviso
+// de 30 minutos, da permisos y manda un aviso de prueba.
 function preparar() {
   sheet_();
   blockSheet_();
+  if (!ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'recordar')) {
+    ScriptApp.newTrigger('recordar').timeBased().everyMinutes(5).create();
+  }
   probarAviso();
 }
 
 function probarAviso() {
-  ntfy_('Prueba', 'Los avisos de Alex Studios funcionan ✂️', 'scissors');
+  aviso_('Prueba', 'Los avisos de Alex Studios funcionan ✂️', 'scissors');
 }

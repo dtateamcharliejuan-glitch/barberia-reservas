@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=137c21ab">
+<link rel="stylesheet" href="css/styles.css?v=60a55759">
 </head>
 <body data-step="inicio">
 <!-- Kind: place (barbería). Flujo de una pantalla por paso, pensado para cualquier persona. -->
@@ -31,7 +31,10 @@
     <div class="logo" data-logo aria-hidden="true">AS</div>
     <h1 id="t-inicio" data-name>Alex Studios</h1>
     <p class="place">Barbería en <span data-district>Floralia</span></p>
-    <p class="status" data-status><span class="dot-live"></span><span data-status-text></span></p>
+    <div class="status-row">
+      <p class="status" data-status><span class="dot-live"></span><span data-status-text></span></p>
+      <a class="btn-wa btn-wa-top" data-whatsapp aria-label="Escribir a Alex por WhatsApp" target="_blank" rel="noopener" hidden><span class="wa-icon" aria-hidden="true"></span><span class="wa-label">WhatsApp</span></a>
+    </div>
 
     <div class="mine" data-mine hidden></div>
 
@@ -147,6 +150,11 @@
       <p class="sub">Te esperamos. Guarda esta pantalla o hazle captura.</p>
       <div class="summary card" data-summary-listo></div>
       <p class="where-line done-where"><span class="pin" aria-hidden="true"></span><span data-address></span><a class="link" data-directions target="_blank" rel="noopener">Cómo llegar</a></p>
+      <div class="done-actions">
+        <button class="btn btn-ghost btn-sm" type="button" data-calendar><span class="cal-icon" aria-hidden="true"></span>Agregar a mi calendario</button>
+        <a class="btn-wa" data-whatsapp target="_blank" rel="noopener" hidden><span class="wa-icon" aria-hidden="true"></span>Escribirle a Alex</a>
+      </div>
+      <p class="note cal-note">El calendario de tu celular te avisa 30 minutos antes.</p>
       <p class="policy"><b>Recuerda asistir a tu cita.</b> Si no puedes venir, cancélala aquí o avisa con tiempo. Si faltas sin avisar, se cobrará un valor adicional en tu próxima cita.</p>
     </div>
     <div class="screen-foot">
@@ -173,6 +181,6 @@
 
 <p class="demo-note" data-demo-note hidden>Demo: las reservas se guardan solo en este navegador.</p>
 
-<script type="module" src="js/app.js?v=137c21ab"></script>
+<script type="module" src="js/app.js?v=60a55759"></script>
 </body>
 </html>

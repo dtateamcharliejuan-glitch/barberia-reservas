@@ -8,6 +8,8 @@ export const config = {
   city: 'Cali',
   // Dirección para el mapa y "Cómo llegar", por ejemplo 'Calle 00 # 00-00'. Vacío = el mapa muestra el barrio.
   address: 'Calle 72C Norte # 5N-45',
+  // WhatsApp de Alex (10 números, sin +57). Vacío = no se muestra el botón.
+  whatsapp: '3214386131', // por ahora el de prueba; luego el de Alex
   timeZone: 'America/Bogota', // el calendario usa la hora de Colombia
 
   // Días: 0 = domingo, 1 = lunes … 6 = sábado.

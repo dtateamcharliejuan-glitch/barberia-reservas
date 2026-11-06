@@ -38,6 +38,10 @@ Todo está en [`js/config.js`](js/config.js): nombre, barrio, dirección del map
 7. Copia la URL que termina en `/exec` y pégala en `sheetsUrl` de `js/config.js`.
 
 Las citas aparecen en la pestaña **Citas** de la hoja (el barbero la ve en la app de Google Sheets).
+
+**Avisos al barbero** (por ntfy y por correo de Gmail, los dos gratis): cita nueva (con la nota del cliente), cita cancelada y **recordatorio 30 minutos antes** de cada cita. El recordatorio lo revisa un reloj de Google cada 5 minutos; `preparar` lo deja programado. El correo va a la cuenta dueña de la hoja (se cambia en `NOTIFY_EMAIL`).
+
+**Para el cliente:** botón de **WhatsApp** al chat del barbero (`whatsapp` en `js/config.js`, enlace oficial `wa.me`) y botón **Agregar a mi calendario**: en iPhone abre el Calendario con alarma 30 min antes; en Android, Google Calendar.
 **Para cancelar una cita, borra su fila**: la hora vuelve a quedar libre en la web. Si el cliente cancela desde la web, la fila se borra sola y llega un aviso «Cita cancelada».
 
 ### Días u horas en que Alex no atiende (tatuajes, diligencias…)

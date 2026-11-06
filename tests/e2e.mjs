@@ -2,7 +2,7 @@
 // Uso: npm run e2e   (con la web servida; por defecto en http://localhost:5173/barberia/)
 import { chromium, webkit } from 'playwright-core';
 import assert from 'node:assert/strict';
-import { mkdirSync } from 'node:fs';
+import fs, { mkdirSync } from 'node:fs';
 import { to12h } from '../js/time.js';
 
 // "09:00" → expresión que busca "9:00 a. m." tal como la ve la persona.
@@ -13,7 +13,8 @@ const SHOTS = new URL('../shots/', import.meta.url).pathname.replace(/^\/(\w:)/,
 mkdirSync(SHOTS, { recursive: true });
 
 // --webkit (o ENGINE=webkit) prueba con el motor de Safari (iPhone); por defecto Chromium (Android, Chrome, Edge).
-const browser = process.env.ENGINE === 'webkit' || process.argv.includes('--webkit') ? await webkit.launch() : await chromium.launch({ channel: process.env.CHANNEL ?? 'msedge' });
+const WEBKIT = process.env.ENGINE === 'webkit' || process.argv.includes('--webkit');
+const browser = WEBKIT ? await webkit.launch() : await chromium.launch({ channel: process.env.CHANNEL ?? 'msedge' });
 let failed = 0;
 const check = async (name, fn) => {
   try { await fn(); console.log(`✔ ${name}`); } catch (e) { failed++; console.log(`✖ ${name}\n  ${e.message.split('\n')[0]}`); }
@@ -21,7 +22,15 @@ const check = async (name, fn) => {
 const settle = page => page.waitForTimeout(450); // deja terminar la animación antes de la captura
 
 for (const vp of [{ name: 'movil', width: 390, height: 844, isMobile: true, hasTouch: true }, { name: 'escritorio', width: 1280, height: 860 }]) {
-  const ctx = await browser.newContext({ viewport: { width: vp.width, height: vp.height }, isMobile: vp.isMobile, hasTouch: vp.hasTouch, locale: 'es-CO' });
+  // En WebKit, el celular se presenta como iPhone: así se prueba el camino del archivo .ics.
+  const iphone = WEBKIT && vp.isMobile ? { userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1' } : {};
+  const ctx = await browser.newContext({ viewport: { width: vp.width, height: vp.height }, isMobile: vp.isMobile, hasTouch: vp.hasTouch, locale: 'es-CO', acceptDownloads: true, ...iphone });
+  // Número de WhatsApp de prueba (el real va en js/config.js).
+  await ctx.route('**/js/config.js*', async route => {
+    const res = await route.fetch();
+    await route.fulfill({ response: res, body: (await res.text()).replace(/whatsapp: '\d*'/, "whatsapp: '3001112233'") });
+  });
+  await ctx.route('https://calendar.google.com/**', route => route.fulfill({ body: 'ok' }));
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
@@ -121,6 +130,34 @@ for (const vp of [{ name: 'movil', width: 390, height: 844, isMobile: true, hasT
     assert.match(await page.locator('[data-summary-listo]').innerText(), new RegExp(`Corte \\+ cejas[\\s\\S]*${shown(chosenTime)}`));
     assert.match(await page.locator('[data-screen="listo"] .policy').innerText(), /Si faltas sin avisar, se cobrará un valor adicional/);
     await shot('5-listo');
+  });
+
+  await check(`[${vp.name}] WhatsApp abre el chat de Alex (inicio y listo)`, async () => {
+    const wa = page.locator('[data-screen="listo"] [data-whatsapp]');
+    assert.ok(await wa.isVisible());
+    assert.match(await wa.getAttribute('href'), /^https:\/\/wa\.me\/573001112233\?text=Hola/);
+    assert.equal(await page.locator('[data-whatsapp]').count(), 2);
+  });
+
+  await check(`[${vp.name}] «Agregar a mi calendario» con aviso 30 min antes`, async () => {
+    const apple = await page.evaluate(() => /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent));
+    if (apple) {
+      const [dl] = await Promise.all([page.waitForEvent('download'), page.locator('[data-calendar]').click()]);
+      const ics = fs.readFileSync(await dl.path(), 'utf8');
+      assert.equal(dl.suggestedFilename(), 'cita.ics');
+      assert.match(ics, /TRIGGER:-PT30M/);
+      assert.match(ics, /SUMMARY:Corte \+ cejas en Alex Studios/);
+      const [hh, mm] = chosenTime.split(':').map(Number);
+      assert.match(ics, new RegExp(`DTSTART:\\d{8}T${String(hh + 5).padStart(2, '0')}${String(mm).padStart(2, '0')}00Z`), 'hora de Colombia pasada a UTC');
+    } else {
+      const [popup] = await Promise.all([page.waitForEvent('popup'), page.locator('[data-calendar]').click()]);
+      await popup.waitForURL(/calendar.google.com/);
+      const url = new URL(popup.url());
+      assert.equal(url.host, 'calendar.google.com');
+      assert.equal(url.searchParams.get('text'), 'Corte + cejas en Alex Studios');
+      assert.match(url.searchParams.get('dates'), /^\d{8}T\d{6}Z\/\d{8}T\d{6}Z$/);
+      await popup.close();
+    }
   });
 
   await check(`[${vp.name}] cancelar por error: pide confirmación y «No» la mantiene`, async () => {

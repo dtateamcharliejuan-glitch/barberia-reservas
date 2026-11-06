@@ -256,7 +256,18 @@ h1 { font-size: clamp(2.8rem, 14vw, 4.6rem); }
 }
 .field textarea { padding: 14px 16px; resize: vertical; line-height: 1.4; min-height: 84px; font: inherit; font-size: 16px; color: inherit; }
 .field input::placeholder, .field textarea::placeholder { color: #8e867b; } /* 4.7:1 sobre el campo */
-.field input:focus, .field textarea:focus { outline: none; border-color: var(--accent); background: var(--surface-2); }
+.field input:focus, .field textarea:focus { outline: none; border-color: var(--accent); background: var(--surface-2); }/* WhatsApp: el verde de la marca, para que se reconozca al vuelo. */
+.status-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.btn-wa { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: 999px; background: #25d366; color: #0b2a17; font-weight: 600; text-decoration: none; transition: transform .16s var(--ease), filter .2s; }
+.btn-wa:active { transform: scale(.97); }
+.wa-icon, .cal-icon { display: grid; }
+.wa-icon svg { width: 20px; height: 20px; }
+.cal-icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.done-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 18px; }
+.done-actions .btn { gap: 8px; }
+.cal-note { text-align: center; margin-top: 8px; }
+@media (hover: hover) and (pointer: fine) { .btn-wa:hover { filter: brightness(1.06); } }
+
 .policy { margin-top: 4px; padding: 12px 14px; border-radius: var(--r-sm); border: 1px solid var(--line); border-left: 3px solid var(--accent); color: var(--muted); font-size: .92rem; line-height: 1.45; }
 .policy b { color: var(--ink); font-weight: 600; }
 .done-body .policy { max-width: 460px; margin: 16px auto 0; text-align: left; }
@@ -391,6 +402,13 @@ body[data-step="inicio"] .demo-note { padding-bottom: calc(var(--foot-h) + 8px);
   .day { min-height: 76px; }
   .times { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
   .demo-note { padding: 0 var(--pad) 16px; }
+}
+
+/* En el panel del computador, WhatsApp va como ícono redondo junto al horario: así el panel cabe sin scroll. */
+@media (min-width: 1024px) {
+  .btn-wa-top { position: relative; width: 44px; padding: 0; justify-content: center; }
+  .btn-wa-top .wa-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .btn-wa-top .wa-icon svg { width: 22px; height: 22px; }
 }
 
 /* Portátiles con poca altura: el panel de la barbería se compacta para caber sin scroll. */
