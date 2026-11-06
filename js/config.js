@@ -15,13 +15,14 @@ export const config = {
   open: '09:00',
   close: '19:00',
   slotMinutes: 30,
+  breaks: [['12:00', '13:00']], // almuerzo de Alex: esas horas no se ofrecen
   daysAhead: 14,
 
   // Precios en pesos colombianos. Todos duran 30 min (barba: por confirmar).
   services: [
     { id: 'corte', name: 'Corte', price: 18000, includes: 'Corte de cabello', icon: 'scissors' },
     { id: 'cejas', name: 'Corte + cejas', price: 20000, includes: 'Corte de cabello y arreglo de cejas', icon: 'brow' },
-    { id: 'barba', name: 'Corte + barba', price: 23000, includes: 'Corte de cabello y arreglo de barba', icon: 'beard' },
+    { id: 'barba', name: 'Corte + barba', price: 25000, includes: 'Corte de cabello y arreglo de barba', icon: 'beard' },
   ],
 
   // Vacío = modo demo (las citas se guardan solo en este navegador).

@@ -23,16 +23,23 @@ export function bookableDays(now, cfg) {
   return days;
 }
 
-// Huecos de un día. `booked` es una lista de { date, time }.
-export function daySlots(date, cfg, booked, now) {
+// ¿Cae la hora dentro de un rango [desde, hasta)? Sin rango = todo el día.
+const inRange = (m, from, to) => (!from || m >= toMinutes(from)) && (!to || m < toMinutes(to));
+
+// Huecos de un día. `booked` es una lista de { date, time }; `blocked`, los bloqueos de Alex
+// ({ date, from, to }: sin from/to es el día entero). Las pausas fijas (almuerzo) ni se muestran.
+export function daySlots(date, cfg, booked, now, blocked = []) {
   const taken = new Set(booked.filter(b => b.date === date).map(b => b.time));
+  const blocks = blocked.filter(b => b.date === date);
   const isToday = date === toISODate(now);
   const nowMin = now.getHours() * 60 + now.getMinutes();
   const slots = [];
   for (let m = toMinutes(cfg.open); m + cfg.slotMinutes <= toMinutes(cfg.close); m += cfg.slotMinutes) {
+    if ((cfg.breaks ?? []).some(([from, to]) => inRange(m, from, to))) continue;
     const time = fromMinutes(m);
     let reason = null;
-    if (taken.has(time)) reason = 'booked';
+    if (blocks.some(b => inRange(m, b.from, b.to))) reason = 'blocked';
+    else if (taken.has(time)) reason = 'booked';
     else if (isToday && m <= nowMin) reason = 'past';
     slots.push({ time, available: reason === null, reason });
   }

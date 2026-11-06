@@ -1,6 +1,6 @@
 // Prueba de punta a punta con Playwright (Edge instalado en el equipo).
 // Uso: npm run e2e   (con la web servida; por defecto en http://localhost:5173/barberia/)
-import { chromium } from 'playwright-core';
+import { chromium, webkit } from 'playwright-core';
 import assert from 'node:assert/strict';
 import { mkdirSync } from 'node:fs';
 import { to12h } from '../js/time.js';
@@ -12,7 +12,8 @@ const BASE = process.env.BASE ?? 'http://localhost:5173/barberia/';
 const SHOTS = new URL('../shots/', import.meta.url).pathname.replace(/^\/(\w:)/, '$1');
 mkdirSync(SHOTS, { recursive: true });
 
-const browser = await chromium.launch({ channel: process.env.CHANNEL ?? 'msedge' });
+// --webkit (o ENGINE=webkit) prueba con el motor de Safari (iPhone); por defecto Chromium (Android, Chrome, Edge).
+const browser = process.env.ENGINE === 'webkit' || process.argv.includes('--webkit') ? await webkit.launch() : await chromium.launch({ channel: process.env.CHANNEL ?? 'msedge' });
 let failed = 0;
 const check = async (name, fn) => {
   try { await fn(); console.log(`✔ ${name}`); } catch (e) { failed++; console.log(`✖ ${name}\n  ${e.message.split('\n')[0]}`); }
@@ -42,7 +43,7 @@ for (const vp of [{ name: 'movil', width: 390, height: 844, isMobile: true, hasT
     assert.equal(await page.locator('img').count(), 0, 'sin fotos de stock');
     assert.equal(await page.locator('[data-price-list] .icon-tile svg').count(), 3);
     assert.match(await page.locator('.place').innerText(), /Floralia/);
-    assert.deepEqual(await page.locator('[data-price-list] .price').allInnerTexts(), ['$18.000', '$20.000', '$23.000']);
+    assert.deepEqual(await page.locator('[data-price-list] .price').allInnerTexts(), ['$18.000', '$20.000', '$25.000']);
     assert.equal(await page.locator('[data-mine]').isHidden(), true, 'sin citas todavía');
     await shot('0-inicio');
   });
@@ -52,6 +53,7 @@ for (const vp of [{ name: 'movil', width: 390, height: 844, isMobile: true, hasT
     await visible('servicio');
     assert.equal(await page.locator('[data-count]').innerText(), 'Paso 1 de 4');
     assert.equal(await page.locator('.option .icon-tile svg').count(), 3);
+    assert.equal(await page.locator('#t-servicio').innerText(), '¿Qué servicio deseas?');
     await shot('1-servicio');
   });
 
@@ -59,6 +61,10 @@ for (const vp of [{ name: 'movil', width: 390, height: 844, isMobile: true, hasT
     await page.locator('.option', { hasText: 'Corte + cejas' }).click();
     await visible('dia');
     assert.match(await page.locator('[data-pick-service]').innerText(), /Corte \+ cejas · \$20\.000/);
+    // Día que Alex bloqueó (en la demo, un día de tatuaje): sale «cerrado» y no se puede tocar.
+    const closed = page.locator('.day', { hasText: 'cerrado' });
+    assert.equal(await closed.count(), 1, 'un día bloqueado en la demo');
+    assert.ok(await closed.isDisabled());
     await shot('2-dia');
   });
 
@@ -77,6 +83,8 @@ for (const vp of [{ name: 'movil', width: 390, height: 844, isMobile: true, hasT
     assert.equal(await page.locator('[data-count]').innerText(), 'Paso 3 de 4');
     assert.ok(await page.locator('.period').count() >= 1);
     assert.ok(await page.locator('.slot[disabled]').first().isDisabled());
+    assert.equal(await page.locator('.slot[data-time="12:00"], .slot[data-time="12:30"]').count(), 0, 'a las 12 Alex almuerza');
+    assert.match(await page.locator('.break-note').innerText(), /Almuerzo de 12:00 a 1:00 p\. m\./);
     const firstFree = page.locator('.slot:not([disabled])').first();
     chosenTime = await firstFree.getAttribute('data-time');
     assert.match(await firstFree.innerText(), new RegExp(shown(chosenTime)), 'la hora se ve con a. m./p. m.');
@@ -92,14 +100,26 @@ for (const vp of [{ name: 'movil', width: 390, height: 844, isMobile: true, hasT
     assert.match(await page.locator('[data-hint]').innerText(), /nombre/);
   });
 
-  await check(`[${vp.name}] con nombre y celular se confirma`, async () => {
+  await check(`[${vp.name}] etiquetas Nombre y Celular; con 7 números no deja confirmar`, async () => {
+    assert.deepEqual(await page.locator('.field > span').allInnerTexts(), ['Nombre', 'Celular', 'Nota (opcional)']);
     await page.locator('input[name=name]').fill('Juan Pérez');
+    await page.locator('input[name=phone]').fill('300 123 4');
+    assert.ok(await page.locator('[data-submit]').isDisabled(), '7 números no bastan');
+    assert.match(await page.locator('[data-hint]').innerText(), /10 números/);
+    await page.locator('input[name=phone]').fill('300 123 45678');
+    assert.ok(await page.locator('[data-submit]').isDisabled(), '11 números tampoco');
+    assert.match(await page.locator('.policy').first().innerText(), /Recuerda asistir a tu cita/);
+  });
+
+  await check(`[${vp.name}] con nombre, celular de 10 y nota se confirma`, async () => {
     await page.locator('input[name=phone]').fill('300 123 4567');
+    await page.locator('textarea[name=note]').fill('Degradado bajo');
     await shot('4-datos');
     await page.getByRole('button', { name: 'Confirmar cita' }).click();
     await visible('listo');
     assert.equal(await page.locator('[data-done-title]').innerText(), '¡Listo, Juan!');
     assert.match(await page.locator('[data-summary-listo]').innerText(), new RegExp(`Corte \\+ cejas[\\s\\S]*${shown(chosenTime)}`));
+    assert.match(await page.locator('[data-screen="listo"] .policy').innerText(), /Si faltas sin avisar, se cobrará un valor adicional/);
     await shot('5-listo');
   });
 
@@ -144,7 +164,7 @@ for (const vp of [{ name: 'movil', width: 390, height: 844, isMobile: true, hasT
   await check(`[${vp.name}] sin scroll lateral ni errores en consola`, async () => {
     const [sw, cw] = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
     assert.ok(sw <= cw, `scrollWidth ${sw} > ${cw}`);
-    assert.deepEqual(errors, []);
+    assert.deepEqual(errors, [], JSON.stringify(errors));
   });
 
   await ctx.close();

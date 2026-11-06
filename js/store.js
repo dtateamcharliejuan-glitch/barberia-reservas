@@ -1,9 +1,9 @@
 // Dos almacenes con la misma interfaz:
-//   list()          -> [{ date, time }]  horas ocupadas
+//   list()          -> { booked: [{ date, time }], blocked: [{ date, from, to }] }  horas ocupadas y bloqueos de Alex
 //   book(booking)   -> { ok: true, id } | { ok: false, error: 'taken' | 'limit' | 'bad' | 'network' }
 //   cancel(id)      -> { ok: true } | { ok: false, error: 'notfound' | 'network' }
 
-import { toISODate } from './slots.js?v=406502cd';
+import { toISODate } from './slots.js?v=d4756753';
 
 const KEY = 'barberia.bookings';
 
@@ -19,6 +19,14 @@ function demoSeed() {
   ].map(([n, time]) => ({ id: newId(), date: d(n), time }));
 }
 
+// En la demo, un día de tatuaje: así se ve cómo queda un día que Alex bloquea.
+function demoBlocked() {
+  const t = new Date();
+  let n = 5;
+  while (new Date(t.getFullYear(), t.getMonth(), t.getDate() + n).getDay() === 0) n++;
+  return [{ date: toISODate(new Date(t.getFullYear(), t.getMonth(), t.getDate() + n)) }];
+}
+
 function localStore({ storage = globalThis.localStorage, seed = true, delay = 450 } = {}) {
   const read = () => { try { return JSON.parse(storage.getItem(KEY)) ?? null; } catch { return null; } };
   const write = list => { try { storage.setItem(KEY, JSON.stringify(list)); } catch { /* modo privado */ } };
@@ -29,7 +37,7 @@ function localStore({ storage = globalThis.localStorage, seed = true, delay = 45
 
   return {
     demo: true,
-    async list() { return mem.map(({ date, time }) => ({ date, time })); },
+    async list() { return { booked: mem.map(({ date, time }) => ({ date, time })), blocked: seed ? demoBlocked() : [] }; },
     async book(b) {
       await wait();
       if (mem.some(x => x.date === b.date && x.time === b.time)) return { ok: false, error: 'taken' };
@@ -63,7 +71,8 @@ function sheetsStore(url) {
     demo: false,
     async list() {
       const r = await fetch(`${url}?action=list&t=${Date.now()}`);
-      return (await r.json()).booked ?? [];
+      const j = await r.json();
+      return { booked: j.booked ?? [], blocked: j.blocked ?? [] };
     },
     book: b => post({ action: 'book', ...b }),
     cancel: id => post({ action: 'cancel', id }),

@@ -248,13 +248,19 @@ h1 { font-size: clamp(2.8rem, 14vw, 4.6rem); }
 .fields { display: grid; gap: 0 16px; }
 .field { display: block; margin-bottom: 16px; min-width: 0; }
 .field span { display: block; font-weight: 600; margin-bottom: 6px; }
-.field input {
+.field small { font-weight: 400; color: var(--muted); }
+.field input, .field textarea {
   width: 100%; min-height: 56px; padding: 0 16px; font-size: 16px; /* 16px: sin zoom en iPhone */
   background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--r-sm);
   transition: border-color .18s, background-color .18s;
 }
-.field input::placeholder { color: #8e867b; } /* 4.7:1 sobre el campo */
-.field input:focus { outline: none; border-color: var(--accent); background: var(--surface-2); }
+.field textarea { padding: 14px 16px; resize: vertical; line-height: 1.4; min-height: 84px; font: inherit; font-size: 16px; color: inherit; }
+.field input::placeholder, .field textarea::placeholder { color: #8e867b; } /* 4.7:1 sobre el campo */
+.field input:focus, .field textarea:focus { outline: none; border-color: var(--accent); background: var(--surface-2); }
+.policy { margin-top: 4px; padding: 12px 14px; border-radius: var(--r-sm); border: 1px solid var(--line); border-left: 3px solid var(--accent); color: var(--muted); font-size: .92rem; line-height: 1.45; }
+.policy b { color: var(--ink); font-weight: 600; }
+.done-body .policy { max-width: 460px; margin: 16px auto 0; text-align: left; }
+.break-note { margin: 10px 0 4px; }
 .error { background: var(--danger-soft); color: var(--danger); border-radius: var(--r-sm); padding: 12px 14px; }
 
 /* ---------- Listo ---------- */
@@ -323,7 +329,7 @@ body[data-step="inicio"] .demo-note { padding-bottom: calc(var(--foot-h) + 8px);
   .screen-home .screen-foot { position: sticky; left: auto; right: auto; }
   .home-intro { display: block; }
   .how { margin-top: 20px; }
-  .option, .day, .slot, .field input, .status, .summary, .mine-card { background-color: var(--bg); }
+  .option, .day, .slot, .field input, .field textarea, .status, .summary, .mine-card { background-color: var(--bg); }
   .mine-card { background: var(--accent-soft); }
   .times { grid-template-columns: repeat(6, 1fr); }
   .fields { grid-template-columns: 1fr 1fr; }

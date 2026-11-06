@@ -6,6 +6,7 @@
     "test": "node --test tests/slots.test.mjs tests/store.test.mjs tests/time.test.mjs && node tests/apps-script.sim.cjs && node scripts/stamp.mjs --check",
     "e2e": "node tests/e2e.mjs",
     "responsive": "node tests/responsive.mjs",
+    "iphone": "node tests/e2e.mjs --webkit && node tests/responsive.mjs --webkit",
     "stamp": "node scripts/stamp.mjs"
   },
   "devDependencies": {

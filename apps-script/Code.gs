@@ -6,17 +6,23 @@
 const NTFY_TOPIC = 'cambia-esto-barberia-xxxxxxxx';
 
 // Deben coincidir con js/config.js. El servidor no se fía de lo que manda el navegador.
-const SERVICES = { 'Corte': 18000, 'Corte + cejas': 20000, 'Corte + barba': 23000 };
+const SERVICES = { 'Corte': 18000, 'Corte + cejas': 20000, 'Corte + barba': 25000 };
 const OPEN_DAYS = [1, 2, 3, 4, 5, 6]; // 0 = domingo
 const OPEN = '09:00';
 const CLOSE = '19:00';
 const SLOT_MINUTES = 30;
+const BREAKS = [['12:00', '13:00']]; // almuerzo: esas horas no se reservan
 const DAYS_AHEAD = 14;
 const MAX_PER_PHONE = 2; // citas futuras por número de celular
 
 const SHEET_NAME = 'Citas';
-const HEADERS = ['Fecha', 'Hora', 'Servicio', 'Precio', 'Nombre', 'Teléfono', 'Creada', 'Id'];
-const COL = { date: 0, time: 1, service: 2, name: 4, phone: 5, id: 7 };
+const HEADERS = ['Fecha', 'Hora', 'Servicio', 'Precio', 'Nombre', 'Teléfono', 'Nota', 'Creada', 'Id'];
+const COL = { date: 0, time: 1, service: 2, name: 4, phone: 5, note: 6, id: 8 };
+
+// El "panel" de Alex: en la pestaña Bloqueos escribe un día (y si quiere, desde/hasta qué hora)
+// en que no atiende, por ejemplo un día de tatuajes. Sin horas = el día entero.
+const BLOCK_SHEET = 'Bloqueos';
+const BLOCK_HEADERS = ['Fecha', 'Desde', 'Hasta', 'Motivo (solo lo ves tú)'];
 
 function sheet_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -31,6 +37,63 @@ function sheet_() {
   return sh;
 }
 
+// Horas de 9:00 a. m. a 7:00 p. m. para las listas desplegables de Bloqueos.
+function hourOptions_() {
+  const out = [];
+  for (let m = minutes_(OPEN); m <= minutes_(CLOSE); m += SLOT_MINUTES) out.push(to12h_(hhmm_(m)));
+  return out;
+}
+
+function blockSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName(BLOCK_SHEET);
+  if (!sh) {
+    sh = ss.insertSheet(BLOCK_SHEET);
+    sh.appendRow(BLOCK_HEADERS);
+    sh.setFrozenRows(1);
+    // Fecha con calendario y horas con lista: así no hay que escribir formatos raros.
+    sh.getRange('A2:A').setNumberFormat('dd/mm/yyyy').setDataValidation(SpreadsheetApp.newDataValidation().requireDate().setAllowInvalid(false).build());
+    sh.getRange('B2:C').setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(hourOptions_(), true).setAllowInvalid(false).build());
+  }
+  return sh;
+}
+
+// "2:00 p. m." o "14:00" → "14:00". Vacío → null.
+function parseHour_(v) {
+  const m = String(v || '').trim().toLowerCase().match(/^(\d{1,2}):(\d{2})\s*(a|p)?/);
+  if (!m) return null;
+  let h = Number(m[1]);
+  if (m[3] === 'p' && h < 12) h += 12;
+  if (m[3] === 'a' && h === 12) h = 0;
+  return hhmm_(h * 60 + Number(m[2]));
+}
+
+// Bloqueos de hoy en adelante: [{ date, from, to }].
+function blocked_() {
+  const sh = blockSheet_();
+  const last = sh.getLastRow();
+  if (last < 2) return [];
+  const tz = Session.getScriptTimeZone();
+  const range = sh.getRange(2, 1, last - 1, 3);
+  const values = range.getValues();
+  const shown = range.getDisplayValues();
+  const today = today_();
+  const out = [];
+  values.forEach((r, i) => {
+    let date = null;
+    if (r[0] instanceof Date) date = Utilities.formatDate(r[0], tz, 'yyyy-MM-dd');
+    else {
+      const d = String(r[0] || '').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (d) date = d[3] + '-' + d[2].padStart(2, '0') + '-' + d[1].padStart(2, '0');
+    }
+    if (!date || date < today) return;
+    out.push({ date: date, from: parseHour_(shown[i][1]), to: parseHour_(shown[i][2]) });
+  });
+  return out;
+}
+
+const inRange_ = (m, from, to) => (!from || m >= minutes_(from)) && (!to || m < minutes_(to));
+
 function rows_() {
   const sh = sheet_();
   const last = sh.getLastRow();
@@ -39,6 +102,7 @@ function rows_() {
 }
 
 const minutes_ = hhmm => { const p = hhmm.split(':').map(Number); return p[0] * 60 + p[1]; };
+const hhmm_ = min => String(Math.floor(min / 60)).padStart(2, '0') + ':' + String(min % 60).padStart(2, '0');
 const to12h_ = hhmm => { const p = hhmm.split(':').map(Number); return (p[0] % 12 || 12) + ':' + String(p[1]).padStart(2, '0') + (p[0] < 12 ? ' a. m.' : ' p. m.'); };
 const digits_ = s => String(s || '').replace(/\D/g, '');
 const today_ = () => Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
@@ -52,6 +116,8 @@ function validSlot_(date, time) {
   if (!OPEN_DAYS.includes(d.getDay())) return false;
   const t = minutes_(time);
   if (t < minutes_(OPEN) || t + SLOT_MINUTES > minutes_(CLOSE) || (t - minutes_(OPEN)) % SLOT_MINUTES) return false;
+  if (BREAKS.some(b => inRange_(t, b[0], b[1]))) return false;
+  if (blocked_().some(b => b.date === date && inRange_(t, b.from, b.to))) return false;
   const today = today_();
   if (date < today || (date === today && t <= nowMin_())) return false;
   const p0 = today.split('-').map(Number);
@@ -74,9 +140,12 @@ function ntfy_(title, text, tag) {
   } catch (err) { /* la hoja ya está actualizada aunque falle el aviso */ }
 }
 
-// Solo devuelve fecha y hora: nunca nombres, teléfonos ni ids.
+// Solo devuelve fechas y horas: nunca nombres, teléfonos, notas ni ids.
 function doGet() {
-  return json_({ booked: rows_().filter(r => r[COL.date] && r[COL.time]).map(r => ({ date: r[COL.date], time: r[COL.time] })) });
+  return json_({
+    booked: rows_().filter(r => r[COL.date] && r[COL.time]).map(r => ({ date: r[COL.date], time: r[COL.time] })),
+    blocked: blocked_(),
+  });
 }
 
 function doPost(e) {
@@ -87,10 +156,10 @@ function doPost(e) {
 
 function book_(b) {
   const name = String(b.name || '').trim();
-  const phone = String(b.phone || '').trim();
+  const phone = digits_(b.phone).replace(/^57(?=\d{10}$)/, ''); // celular colombiano: 10 números
+  const note = String(b.note || '').trim().slice(0, 200);
   const price = SERVICES[b.service];
-  const valid = price && validSlot_(b.date, b.time) && name.length >= 2 && name.length <= 60
-    && digits_(phone).length >= 7 && digits_(phone).length <= 15;
+  const valid = price && name.length >= 2 && name.length <= 60 && phone.length === 10 && validSlot_(b.date, b.time);
   if (!valid) return json_({ ok: false, error: 'bad' });
 
   // El candado evita que dos personas reserven la misma hora a la vez.
@@ -106,12 +175,12 @@ function book_(b) {
     }
     const clean = v => v.replace(/^[=+\-@]/, "'$&"); // evita fórmulas inyectadas en la hoja
     id = Utilities.getUuid();
-    sheet_().appendRow([b.date, b.time, b.service, price, clean(name), clean(phone), new Date(), id]);
+    sheet_().appendRow([b.date, b.time, b.service, price, clean(name), phone, clean(note), new Date(), id]);
   } finally {
     lock.releaseLock();
   }
 
-  ntfy_('Nueva cita', `${name} · ${b.service}\n${b.date} a las ${to12h_(b.time)}\nCel: ${phone}`, 'scissors');
+  ntfy_('Nueva cita', `${name} · ${b.service}\n${b.date} a las ${to12h_(b.time)}\nCel: ${phone}${note ? `\nNota: ${note}` : ''}`, 'scissors');
   return json_({ ok: true, id: id });
 }
 
@@ -134,7 +203,13 @@ function cancel_(id) {
   return json_({ ok: true });
 }
 
-// Ejecútala una vez desde el editor para dar permisos y probar el aviso.
+// Ejecútala una vez desde el editor: crea las pestañas Citas y Bloqueos, da permisos y manda un aviso de prueba.
+function preparar() {
+  sheet_();
+  blockSheet_();
+  probarAviso();
+}
+
 function probarAviso() {
   ntfy_('Prueba', 'Los avisos de Alex Studios funcionan ✂️', 'scissors');
 }

@@ -16,7 +16,7 @@ test('reservar devuelve un id y ocupa la hora', async () => {
   const r = await s.book(b);
   assert.equal(r.ok, true);
   assert.ok(r.id && r.id.length >= 16, 'id largo y difícil de adivinar');
-  assert.deepEqual(await s.list(), [{ date: '2026-11-06', time: '10:00' }]);
+  assert.deepEqual(await s.list(), { booked: [{ date: '2026-11-06', time: '10:00' }], blocked: [] });
 });
 
 test('no se puede reservar dos veces la misma hora', async () => {
@@ -29,14 +29,14 @@ test('cancelar con el id libera la hora', async () => {
   const s = createStore('', { storage: memStorage(), seed: false, delay: 0 });
   const { id } = await s.book(b);
   assert.deepEqual(await s.cancel(id), { ok: true });
-  assert.deepEqual(await s.list(), []);
+  assert.deepEqual((await s.list()).booked, []);
 });
 
 test('cancelar con un id que no existe no borra nada', async () => {
   const s = createStore('', { storage: memStorage(), seed: false, delay: 0 });
   await s.book(b);
   assert.deepEqual(await s.cancel('inventado'), { ok: false, error: 'notfound' });
-  assert.equal((await s.list()).length, 1);
+  assert.equal((await s.list()).booked.length, 1);
 });
 
 test('mis citas: guarda, oculta las pasadas y se puede quitar', () => {

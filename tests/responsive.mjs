@@ -1,6 +1,6 @@
 // Responsive: recorre el flujo completo en 14 tamaños de pantalla y revisa proporciones.
 // Uso: npm run responsive   (con la web servida; por defecto en http://localhost:5173/barberia/)
-import { chromium } from 'playwright-core';
+import { chromium, webkit } from 'playwright-core';
 import assert from 'node:assert/strict';
 import { mkdirSync } from 'node:fs';
 
@@ -25,7 +25,8 @@ const SIZES = [
   { name: '3840-4k', width: 3840, height: 2160 },
 ];
 
-const browser = await chromium.launch({ channel: process.env.CHANNEL ?? 'msedge' });
+// --webkit (o ENGINE=webkit) prueba con el motor de Safari (iPhone); por defecto Chromium (Android, Chrome, Edge).
+const browser = process.env.ENGINE === 'webkit' || process.argv.includes('--webkit') ? await webkit.launch() : await chromium.launch({ channel: process.env.CHANNEL ?? 'msedge' });
 let failed = 0;
 const problems = [];
 

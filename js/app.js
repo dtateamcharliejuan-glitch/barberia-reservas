@@ -1,9 +1,9 @@
-import { config, money } from './config.js?v=406502cd';
-import { heroScene, ICONS } from './art.js?v=406502cd';
-import { to12h, splitTime, nowIn } from './time.js?v=406502cd';
-import { bookableDays, daySlots, toISODate } from './slots.js?v=406502cd';
-import { createStore } from './store.js?v=406502cd';
-import { addMine, listMine, removeMine } from './mine.js?v=406502cd';
+import { config, money } from './config.js?v=d4756753';
+import { heroScene, ICONS } from './art.js?v=d4756753';
+import { to12h, splitTime, nowIn } from './time.js?v=d4756753';
+import { bookableDays, daySlots, toISODate } from './slots.js?v=d4756753';
+import { createStore } from './store.js?v=d4756753';
+import { addMine, listMine, removeMine } from './mine.js?v=d4756753';
 
 const $ = sel => document.querySelector(sel);
 // La hora de la barbería (Colombia), aunque el celular tenga otra zona horaria.
@@ -15,7 +15,7 @@ const storage = (() => { try { localStorage.setItem('_t', '1'); localStorage.rem
 const STEPS = ['inicio', 'servicio', 'dia', 'hora', 'datos', 'listo'];
 const NUMBERED = ['servicio', 'dia', 'hora', 'datos']; // los que cuentan como "Paso n de 4"
 
-const state = { step: 'inicio', service: null, date: null, time: null, booked: [], last: null, today: toISODate(now0()) };
+const state = { step: 'inicio', service: null, date: null, time: null, booked: [], blocked: [], last: null, today: toISODate(now0()) };
 
 const parseDate = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d); };
 const longDay = iso => parseDate(iso).toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -149,6 +149,7 @@ function fillWhere() {
   $('[data-map]').replaceChildren(el('iframe', {
     src: `https://www.google.com/maps?q=${encodeURIComponent(query)}&z=16&hl=es&output=embed`,
     title: `Mapa: ${config.name} en ${area}`, loading: 'lazy', referrerPolicy: 'no-referrer-when-downgrade',
+    allow: 'fullscreen', allowFullscreen: true, // sin esto Safari (iPhone) marca error en el botón de pantalla completa del mapa
   }));
 
   // En el computador el panel de la izquierda no tiene sitio: el bloque pasa a la columna del inicio.
@@ -204,12 +205,14 @@ function renderDays(now) {
   const lead = (parseDate(days[0]).getDay() + 6) % 7; // alinea con Lun … Sáb
   for (let i = 0; i < lead; i++) cells.push(el('span'));
   for (const iso of days) {
-    const free = daySlots(iso, config, state.booked, now).filter(s => s.available).length;
+    const slots = daySlots(iso, config, state.booked, now, state.blocked);
+    const free = slots.filter(s => s.available).length;
+    const closed = slots.every(s => s.reason === 'blocked'); // Alex bloqueó el día entero
     const isToday = iso === toISODate(now);
-    const label = free === 0 ? 'lleno' : isToday ? 'hoy' : parseDate(iso).toLocaleDateString('es', { month: 'short' }).replace('.', '');
+    const label = closed ? 'cerrado' : free === 0 ? 'lleno' : isToday ? 'hoy' : parseDate(iso).toLocaleDateString('es', { month: 'short' }).replace('.', '');
     const b = el('button', { type: 'button', className: `day${isToday ? ' today' : ''}`, disabled: free === 0 }, `<b>${parseDate(iso).getDate()}</b><small>${label}</small>`);
     b.setAttribute('aria-pressed', String(state.date === iso));
-    b.setAttribute('aria-label', `${longDay(iso)}${free === 0 ? ', sin horas libres' : `, ${free} horas libres`}`);
+    b.setAttribute('aria-label', `${longDay(iso)}${closed ? ', no atiende' : free === 0 ? ', sin horas libres' : `, ${free} horas libres`}`);
     b.onclick = () => { state.date = iso; state.time = null; go('hora'); };
     cells.push(b);
   }
@@ -222,7 +225,7 @@ function renderTimes(now) {
   const box = $('[data-times]');
   if (!state.date) { box.replaceChildren(); return; }
   $('[data-pick-day]').textContent = friendlyDay(state.date, now);
-  const slots = daySlots(state.date, config, state.booked, now);
+  const slots = daySlots(state.date, config, state.booked, now, state.blocked);
   if (!slots.some(s => s.available)) {
     box.replaceChildren(el('p', { className: 'empty' }, 'Este día ya no tiene horas libres. Toca «Atrás» y elige otro día.'));
     return;
@@ -240,18 +243,24 @@ function renderTimes(now) {
       const b = el('button', { type: 'button', className: 'slot', disabled: !s.available }, `<b>${t.clock}</b><small>${t.period}</small>`);
       b.dataset.time = s.time;
       b.setAttribute('aria-pressed', String(state.time === s.time));
-      b.setAttribute('aria-label', `${to12h(s.time)}${s.available ? '' : s.reason === 'past' ? ', ya pasó' : ', ocupada'}`);
+      b.setAttribute('aria-label', `${to12h(s.time)}${s.available ? '' : s.reason === 'past' ? ', ya pasó' : s.reason === 'blocked' ? ', no disponible' : ', ocupada'}`);
       b.onclick = () => { state.time = s.time; go('datos'); };
       return b;
     }));
     parts.push(grid);
+    if (label === 'Mañana' && config.breaks?.length) {
+      parts.push(el('p', { className: 'note break-note' }, config.breaks.map(([a, b]) => `Almuerzo de ${to12h(a).replace(/ [ap]\. m\.$/, '')} a ${to12h(b)}: sin citas.`).join(' ')));
+    }
   }
   box.replaceChildren(...parts);
 }
 
+// Celular colombiano: 10 números (si escriben +57 delante, se quita).
+const phoneDigits = v => v.replace(/\D/g, '').replace(/^57(?=\d{10}$)/, '');
+
 function formReady() {
   const f = $('[data-form]').elements;
-  return f.name.value.trim().length >= 2 && f.phone.value.replace(/\D/g, '').length >= 7;
+  return f.name.value.trim().length >= 2 && phoneDigits(f.phone.value).length === 10;
 }
 
 function renderForm() {
@@ -264,7 +273,8 @@ function renderForm() {
   $('[data-submit]').disabled = !ready;
   $('[data-hint]').textContent = ready ? 'Todo listo. Toca «Confirmar cita».'
     : f.name.value.trim().length < 2 ? 'Escribe tu nombre para confirmar.'
-    : 'Escribe tu celular (mínimo 7 números).';
+    : phoneDigits(f.phone.value).length > 10 ? 'El celular tiene más de 10 números. Revísalo.'
+    : 'Escribe tu celular: 10 números.';
 }
 
 function render() {
@@ -295,7 +305,7 @@ function keepFresh() {
       return;
     }
   }
-  if (state.date && state.time && !daySlots(state.date, config, state.booked, now).find(s => s.time === state.time)?.available) {
+  if (state.date && state.time && !daySlots(state.date, config, state.booked, now, state.blocked).find(s => s.time === state.time)?.available) {
     state.time = null;
     if (state.step === 'datos') {
       history.replaceState({ step: 'hora' }, '', '#hora');
@@ -309,7 +319,7 @@ function keepFresh() {
 }
 
 async function refresh() {
-  try { state.booked = await store.list(); } catch { /* sin red: se mantiene lo último */ }
+  try { ({ booked: state.booked, blocked: state.blocked } = await store.list()); } catch { /* sin red: se mantiene lo último */ }
   keepFresh();
 }
 
@@ -336,7 +346,7 @@ async function submit(ev) {
   if (btn.disabled || !formReady()) return;
   const f = $('[data-form]').elements;
   const s = service();
-  const booking = { date: state.date, time: state.time, service: s.name, price: s.price, name: f.name.value.trim(), phone: f.phone.value.trim() };
+  const booking = { date: state.date, time: state.time, service: s.name, price: s.price, name: f.name.value.trim(), phone: phoneDigits(f.phone.value), note: f.note.value.trim() };
 
   btn.disabled = true;
   btn.textContent = 'Reservando…';
@@ -357,7 +367,7 @@ async function submit(ev) {
   }
   if (res.error === 'taken') {
     state.time = null;
-    try { state.booked = await store.list(); } catch { /* se queda lo último */ }
+    try { ({ booked: state.booked, blocked: state.blocked } = await store.list()); } catch { /* se queda lo último */ }
     history.replaceState({ step: 'hora' }, '', '#hora');
     show('hora', 'back');
     toast('Alguien acaba de reservar esa hora. Elige otra.');

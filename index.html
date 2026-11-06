@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=406502cd">
+<link rel="stylesheet" href="css/styles.css?v=d4756753">
 </head>
 <body data-step="inicio">
 <!-- Kind: place (barbería). Flujo de una pantalla por paso, pensado para cualquier persona. -->
@@ -80,7 +80,7 @@
   <!-- 1. Servicio -->
   <section class="screen" data-screen="servicio" aria-labelledby="t-servicio" hidden>
     <div class="screen-body">
-      <h2 id="t-servicio">¿Qué te vas a hacer?</h2>
+      <h2 id="t-servicio">¿Qué servicio deseas?</h2>
       <p class="sub">Toca el servicio que quieres.</p>
       <div class="options" data-services></div>
     </div>
@@ -90,7 +90,7 @@
   <section class="screen" data-screen="dia" aria-labelledby="t-dia" hidden>
     <div class="screen-body">
       <h2 id="t-dia">¿Qué día?</h2>
-      <p class="sub">Toca un día. Los que dicen <em>lleno</em> ya no tienen horas.</p>
+      <p class="sub">Toca un día. Los que dicen <em>lleno</em> o <em>cerrado</em> no tienen horas.</p>
       <p class="chosen" data-pick-service></p>
       <div class="weekdays" aria-hidden="true"><span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span></div>
       <div class="days" data-days></div>
@@ -117,14 +117,19 @@
         <div class="summary card" data-summary-datos></div>
         <div class="fields">
         <label class="field">
-          <span>Tu nombre</span>
+          <span>Nombre</span>
           <input name="name" autocomplete="name" required minlength="2" maxlength="60" enterkeyhint="next" placeholder="Cómo te llamas">
         </label>
         <label class="field">
-          <span>Tu celular</span>
-          <input name="phone" type="tel" inputmode="tel" autocomplete="tel" required maxlength="20" enterkeyhint="done" placeholder="Para avisarte si hay un cambio">
+          <span>Celular</span>
+          <input name="phone" type="tel" inputmode="numeric" autocomplete="tel-national" required maxlength="16" enterkeyhint="next" placeholder="10 números">
         </label>
         </div>
+        <label class="field">
+          <span>Nota <small>(opcional)</small></span>
+          <textarea name="note" rows="2" maxlength="200" enterkeyhint="done" placeholder="Si quieres decirle algo a Alex. Ej.: degradado bajo"></textarea>
+        </label>
+        <p class="policy"><b>Recuerda asistir a tu cita.</b> Si no puedes venir, cancélala o avisa con tiempo. Si faltas sin avisar, se cobrará un valor adicional en tu próxima cita.</p>
         <p class="error" data-error hidden></p>
       </div>
       <div class="screen-foot">
@@ -142,7 +147,7 @@
       <p class="sub">Te esperamos. Guarda esta pantalla o hazle captura.</p>
       <div class="summary card" data-summary-listo></div>
       <p class="where-line done-where"><span class="pin" aria-hidden="true"></span><span data-address></span><a class="link" data-directions target="_blank" rel="noopener">Cómo llegar</a></p>
-      <p class="note">¿Te equivocaste o no puedes venir? Cancélala aquí y la hora queda libre para otro.</p>
+      <p class="policy"><b>Recuerda asistir a tu cita.</b> Si no puedes venir, cancélala aquí o avisa con tiempo. Si faltas sin avisar, se cobrará un valor adicional en tu próxima cita.</p>
     </div>
     <div class="screen-foot">
       <button class="btn btn-block" type="button" data-restart>Listo, volver al inicio</button>
@@ -168,6 +173,6 @@
 
 <p class="demo-note" data-demo-note hidden>Demo: las reservas se guardan solo en este navegador.</p>
 
-<script type="module" src="js/app.js?v=406502cd"></script>
+<script type="module" src="js/app.js?v=d4756753"></script>
 </body>
 </html>

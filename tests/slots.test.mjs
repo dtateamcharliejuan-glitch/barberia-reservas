@@ -44,3 +44,24 @@ test('las horas que ya pasaron hoy no están disponibles', () => {
   assert.equal(slots.find(x => x.time === '10:00').reason, 'past');
   assert.equal(slots.find(x => x.time === '10:30').available, true);
 });
+
+test('el almuerzo (12:00 a 1:00) no sale como hora', () => {
+  const slots = daySlots('2026-11-06', { ...cfg, breaks: [['12:00', '13:00']] }, [], new Date(2026, 10, 5, 10, 0));
+  assert.ok(!slots.some(s => s.time === '12:00' || s.time === '12:30'));
+  assert.ok(slots.some(s => s.time === '11:30') && slots.some(s => s.time === '13:00'));
+  assert.equal(slots.length, 18);
+});
+
+test('un bloqueo de día entero cierra todas las horas', () => {
+  const slots = daySlots('2026-11-06', cfg, [], new Date(2026, 10, 5, 10, 0), [{ date: '2026-11-06' }]);
+  assert.ok(slots.every(s => !s.available && s.reason === 'blocked'));
+});
+
+test('un bloqueo por horas cierra solo ese rango', () => {
+  const blocked = [{ date: '2026-11-06', from: '14:00', to: '16:00' }, { date: '2026-11-07' }];
+  const slots = daySlots('2026-11-06', cfg, [], new Date(2026, 10, 5, 10, 0), blocked);
+  assert.equal(slots.find(s => s.time === '13:30').available, true);
+  assert.equal(slots.find(s => s.time === '14:00').reason, 'blocked');
+  assert.equal(slots.find(s => s.time === '15:30').reason, 'blocked');
+  assert.equal(slots.find(s => s.time === '16:00').available, true);
+});
