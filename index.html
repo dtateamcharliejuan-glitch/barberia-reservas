@@ -16,39 +16,50 @@
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/styles.css">
 </head>
-<body>
+<body data-step="inicio">
 <!-- Kind: place (barbería). Flujo de una pantalla por paso, pensado para cualquier persona. -->
 
-<header class="top" data-top>
-  <div class="top-row">
-    <button class="back" type="button" data-back aria-label="Volver al paso anterior" hidden>
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 8 12l7 7"/></svg>
-      <span>Atrás</span>
-    </button>
-    <span class="brand" data-name>Alex Barber</span>
-    <span class="step-count" data-count hidden></span>
+<div class="layout">
+
+<!-- La barbería: en el celular se ve solo en el inicio; en pantallas grandes queda fija a la izquierda. -->
+<aside class="brand-panel" aria-labelledby="t-inicio">
+  <div class="hero">
+    <div class="hero-art" data-hero></div>
   </div>
-  <div class="progress" data-progress hidden><span></span></div>
-</header>
+  <div class="brand-body">
+    <!-- Logo: cuando Alex lo mande, poner la ruta en config.logo y se usa aquí. -->
+    <div class="logo" data-logo aria-hidden="true">AB</div>
+    <h1 id="t-inicio" data-name>Alex Barber</h1>
+    <p class="place">Barbería en <span data-district>Floralia</span></p>
+    <p class="status" data-status><span class="dot-live"></span><span data-status-text></span></p>
+
+    <div class="mine" data-mine hidden></div>
+
+    <h2 class="list-title">Servicios y precios</h2>
+    <ul class="price-list" data-price-list></ul>
+  </div>
+</aside>
 
 <main class="stage">
 
-  <!-- Inicio -->
-  <section class="screen screen-home" data-screen="inicio" aria-labelledby="t-inicio">
-    <div class="hero">
-      <div class="hero-art" data-hero></div>
+  <header class="top" data-top>
+    <div class="top-row">
+      <button class="back" type="button" data-back aria-label="Volver al paso anterior" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 8 12l7 7"/></svg>
+        <span>Atrás</span>
+      </button>
+      <span class="brand" data-name>Alex Barber</span>
+      <span class="step-count" data-count hidden></span>
     </div>
-    <div class="screen-body home-body">
-      <!-- Logo: cuando Alex lo mande, poner la ruta en config.logo y se usa aquí. -->
-      <div class="logo" data-logo aria-hidden="true">AB</div>
-      <h1 id="t-inicio" data-name>Alex Barber</h1>
-      <p class="place">Barbería en <span data-district>Floralia</span></p>
-      <p class="status" data-status><span class="dot-live"></span><span data-status-text>Lun–Sáb · 09:00–19:00</span></p>
+    <div class="progress" data-progress hidden><span></span></div>
+  </header>
 
-      <div class="mine" data-mine hidden></div>
-
-      <h2 class="list-title">Servicios y precios</h2>
-      <ul class="price-list" data-price-list></ul>
+  <!-- Inicio: en el celular solo el botón; en pantallas grandes, cómo funciona la reserva. -->
+  <section class="screen screen-home" data-screen="inicio" aria-labelledby="t-home">
+    <div class="screen-body home-intro">
+      <h2 id="t-home">Reserva tu cita</h2>
+      <p class="sub">En 4 pasos y sin crear cuenta. Tarda menos de un minuto.</p>
+      <ol class="how" data-how></ol>
     </div>
     <div class="screen-foot">
       <button class="btn btn-block" type="button" data-go="servicio">Reservar cita</button>
@@ -94,6 +105,7 @@
         <h2 id="t-datos">Tus datos</h2>
         <p class="sub">Revisa tu cita y escribe tu nombre y celular.</p>
         <div class="summary card" data-summary-datos></div>
+        <div class="fields">
         <label class="field">
           <span>Tu nombre</span>
           <input name="name" autocomplete="name" required minlength="2" maxlength="60" enterkeyhint="next" placeholder="Cómo te llamas">
@@ -102,6 +114,7 @@
           <span>Tu celular</span>
           <input name="phone" type="tel" inputmode="tel" autocomplete="tel" required maxlength="20" enterkeyhint="done" placeholder="Para avisarte si hay un cambio">
         </label>
+        </div>
         <p class="error" data-error hidden></p>
       </div>
       <div class="screen-foot">
@@ -127,6 +140,8 @@
   </section>
 
 </main>
+
+</div>
 
 <!-- Confirmación para cancelar -->
 <div class="sheet-backdrop" data-sheet hidden>

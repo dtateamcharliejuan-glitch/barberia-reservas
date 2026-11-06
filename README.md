@@ -51,6 +51,7 @@ Sube los cambios a GitHub (`main`). GitHub Pages publica la web sola en un minut
 npm install
 npm test      # horarios, cancelar, cambio de día y el servidor de Google (simulado)
 npm run e2e   # reservar, cancelar y medianoche en el navegador (Playwright + Edge), móvil y escritorio
+npm run responsive  # el flujo completo en 11 tamaños de pantalla (320 px a 1920 px, horizontal y ventana baja)
 ```
 
 `npm run e2e` necesita la web servida en http://localhost:5173/barberia/ (o define BASE con otra URL). Las capturas quedan en `shots/`.

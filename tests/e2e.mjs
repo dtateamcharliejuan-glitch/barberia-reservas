@@ -27,7 +27,11 @@ for (const vp of [{ name: 'movil', width: 390, height: 844, isMobile: true, hasT
   page.on('console', m => m.type() === 'error' && errors.push(m.text()));
   await page.goto(BASE);
   await page.waitForLoadState('networkidle');
-  const visible = name => page.locator(`[data-screen="${name}"]`).waitFor();
+  // Espera a que la página esté en ese paso (en el celular la pantalla de inicio no tiene alto propio).
+  const visible = async name => {
+    await page.waitForFunction(n => document.body.dataset.step === n, name);
+    await page.locator(`[data-screen="${name}"]:not([hidden])`).waitFor({ state: 'attached' });
+  };
   const shot = async n => { await settle(page); await page.screenshot({ path: `${SHOTS}${vp.name}-${n}.png` }); };
 
   await check(`[${vp.name}] inicio: nombre, logo, ilustración animada, barrio y precios en pesos`, async () => {

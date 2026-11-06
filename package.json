@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/slots.test.mjs tests/store.test.mjs tests/time.test.mjs && node tests/apps-script.sim.cjs",
-    "e2e": "node tests/e2e.mjs"
+    "e2e": "node tests/e2e.mjs",
+    "responsive": "node tests/responsive.mjs"
   },
   "devDependencies": {
     "playwright-core": "^1.48.2"

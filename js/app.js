@@ -37,6 +37,7 @@ const ICON = {
   day: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>',
   time: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   price: '<svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>',
+  user: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
 };
 
 function summaryHTML(b) {
@@ -75,10 +76,12 @@ function show(step, dir = 'fwd') {
     $('[data-count]').textContent = `Paso ${n + 1} de ${NUMBERED.length}`;
     $('[data-progress] span').style.width = `${((n + 1) / NUMBERED.length) * 100}%`;
   }
+  document.body.dataset.step = step; // el CSS decide qué se ve en cada tamaño de pantalla
   render();
   scrollTo(0, 0);
-  updateTop();
-  const h = $(`[data-screen="${step}"] h1, [data-screen="${step}"] h2`);
+  // Foco al primer título que de verdad se ve (en el celular el del inicio está en el panel de la barbería).
+  const h = [...document.querySelectorAll(`[data-screen="${step}"] h1, [data-screen="${step}"] h2`)].find(e => e.getClientRects().length)
+    ?? (step === 'inicio' ? $('#t-inicio') : null);
   h?.setAttribute('tabindex', '-1');
   h?.focus({ preventScroll: true });
 }
@@ -109,12 +112,6 @@ addEventListener('popstate', e => {
   show(step, STEPS.indexOf(step) < STEPS.indexOf(state.step) ? 'back' : 'fwd');
 });
 
-// La cabecera es transparente sobre la foto del inicio.
-function updateTop() {
-  $('[data-top]').classList.toggle('over-hero', state.step === 'inicio' && scrollY < 120);
-}
-addEventListener('scroll', updateTop, { passive: true });
-
 /* ---------- Pantallas ---------- */
 
 function fillStatic() {
@@ -131,6 +128,10 @@ function fillStatic() {
 
   $('[data-price-list]').replaceChildren(...config.services.map(s =>
     el('li', {}, `<span class="icon-tile" aria-hidden="true">${ICONS[s.icon]}</span><span><b>${s.name}</b><small>${s.includes}</small></span><span class="price">${money(s.price)}</span>`)));
+
+  const how = [['service', 'Servicio', 'Corte, cejas o barba'], ['day', 'Día', 'De lunes a sábado'], ['time', 'Hora', 'Solo ves las libres'], ['user', 'Tus datos', 'Nombre y celular']];
+  $('[data-how]').replaceChildren(...how.map(([icon, title, text]) =>
+    el('li', {}, `<span class="icon-tile" aria-hidden="true">${ICON[icon]}</span><span><b>${title}</b><small>${text}</small></span>`)));
 }
 
 // "Abierto ahora" o cuándo abre.
@@ -348,7 +349,9 @@ async function submit(ev) {
 let pending = null;
 function askCancel(m) {
   pending = m;
-  $('[data-sheet-text]').textContent = `${m.service}, ${friendlyDay(m.date).toLowerCase()} a las ${to12h(m.time)}. La hora quedará libre para otra persona.`;
+  // "a. m." ya lleva punto: no se añade otro al cerrar la frase.
+  const when = `${m.service}, ${friendlyDay(m.date).toLowerCase()} a las ${to12h(m.time)}`;
+  $('[data-sheet-text]').textContent = `${when.endsWith('.') ? when : `${when}.`} La hora quedará libre para otra persona.`;
   $('[data-sheet]').hidden = false;
   $('[data-sheet-no]').focus();
 }
