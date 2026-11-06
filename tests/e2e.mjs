@@ -3,6 +3,10 @@
 import { chromium } from 'playwright-core';
 import assert from 'node:assert/strict';
 import { mkdirSync } from 'node:fs';
+import { to12h } from '../js/time.js';
+
+// "09:00" → expresión que busca "9:00 a. m." tal como la ve la persona.
+const shown = hhmm => to12h(hhmm).replace(/\./g, '\\.').replace(' ', '\\s+');
 
 const BASE = process.env.BASE ?? 'http://localhost:5173/barberia/';
 const SHOTS = new URL('../shots/', import.meta.url).pathname.replace(/^\/(\w:)/, '$1');
@@ -69,14 +73,16 @@ for (const vp of [{ name: 'movil', width: 390, height: 844, isMobile: true, hasT
     assert.equal(await page.locator('[data-count]').innerText(), 'Paso 3 de 4');
     assert.ok(await page.locator('.period').count() >= 1);
     assert.ok(await page.locator('.slot[disabled]').first().isDisabled());
-    chosenTime = await page.locator('.slot:not([disabled])').first().innerText();
+    const firstFree = page.locator('.slot:not([disabled])').first();
+    chosenTime = await firstFree.getAttribute('data-time');
+    assert.match(await firstFree.innerText(), new RegExp(shown(chosenTime)), 'la hora se ve con a. m./p. m.');
     await shot('3-hora');
   });
 
   await check(`[${vp.name}] hora → datos con resumen; confirmar bloqueado sin datos`, async () => {
     await page.locator('.slot:not([disabled])').first().click();
     await visible('datos');
-    assert.match(await page.locator('[data-summary-datos]').innerText(), new RegExp(chosenTime));
+    assert.match(await page.locator('[data-summary-datos]').innerText(), new RegExp(shown(chosenTime)));
     assert.match(await page.locator('[data-summary-datos]').innerText(), /\$20\.000/);
     assert.ok(await page.locator('[data-submit]').isDisabled());
     assert.match(await page.locator('[data-hint]').innerText(), /nombre/);
@@ -89,7 +95,7 @@ for (const vp of [{ name: 'movil', width: 390, height: 844, isMobile: true, hasT
     await page.getByRole('button', { name: 'Confirmar cita' }).click();
     await visible('listo');
     assert.equal(await page.locator('[data-done-title]').innerText(), '¡Listo, Juan!');
-    assert.match(await page.locator('[data-summary-listo]').innerText(), new RegExp(`Corte \\+ cejas[\\s\\S]*${chosenTime}`));
+    assert.match(await page.locator('[data-summary-listo]').innerText(), new RegExp(`Corte \\+ cejas[\\s\\S]*${shown(chosenTime)}`));
     await shot('5-listo');
   });
 
@@ -105,7 +111,7 @@ for (const vp of [{ name: 'movil', width: 390, height: 844, isMobile: true, hasT
   await check(`[${vp.name}] al volver al inicio sale «Tu próxima cita»`, async () => {
     await page.getByRole('button', { name: 'Listo, volver al inicio' }).click();
     await visible('inicio');
-    assert.match(await page.locator('.mine-card').innerText(), new RegExp(`${chosenTime}[\\s\\S]*Corte \\+ cejas`));
+    assert.match(await page.locator('.mine-card').innerText(), new RegExp(`${shown(chosenTime)}[\\s\\S]*Corte \\+ cejas`));
     await shot('7-inicio-con-cita');
   });
 
@@ -114,7 +120,7 @@ for (const vp of [{ name: 'movil', width: 390, height: 844, isMobile: true, hasT
     await page.locator('.option').first().click();
     await page.locator('.day:not([disabled])').first().click();
     await visible('hora');
-    assert.ok(await page.locator('.slot', { hasText: chosenTime }).isDisabled());
+    assert.ok(await page.locator(`.slot[data-time="${chosenTime}"]`).isDisabled());
   });
 
   await check(`[${vp.name}] cancelar desde el inicio libera la hora`, async () => {
@@ -128,7 +134,7 @@ for (const vp of [{ name: 'movil', width: 390, height: 844, isMobile: true, hasT
     await page.locator('.option').first().click();
     await page.locator('.day:not([disabled])').first().click();
     await visible('hora');
-    assert.ok(await page.locator('.slot', { hasText: chosenTime }).isEnabled(), 'la hora vuelve a estar libre');
+    assert.ok(await page.locator(`.slot[data-time="${chosenTime}"]`).isEnabled(), 'la hora vuelve a estar libre');
   });
 
   await check(`[${vp.name}] sin scroll lateral ni errores en consola`, async () => {
@@ -142,9 +148,10 @@ for (const vp of [{ name: 'movil', width: 390, height: 844, isMobile: true, hasT
 
 // El calendario no se queda pegado: con la página abierta, pasa la medianoche.
 await check('[reloj] a medianoche el calendario pasa solo al día nuevo', async () => {
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'es-CO' });
+  // El celular está en Madrid, pero la web debe usar la hora de Bogotá.
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'es-CO', timezoneId: 'Europe/Madrid' });
   const page = await ctx.newPage();
-  await page.clock.install({ time: new Date(2026, 10, 6, 23, 50) }); // viernes 6 nov, 23:50
+  await page.clock.install({ time: new Date('2026-11-06T23:50:00-05:00') }); // viernes 6 nov, 11:50 p. m. en Bogotá
   await page.goto(BASE);
   await page.getByRole('button', { name: 'Reservar cita' }).click();
   await page.locator('.option').first().click();

@@ -5,6 +5,7 @@ export const config = {
   initials: 'AB', // se ve mientras no haya logo
   logo: '', // ruta del logo cuando lo tengamos, por ejemplo 'img/logo.png'
   district: 'Floralia',
+  timeZone: 'America/Bogota', // el calendario usa la hora de Colombia
 
   // Días: 0 = domingo, 1 = lunes … 6 = sábado.
   openDays: [1, 2, 3, 4, 5, 6],

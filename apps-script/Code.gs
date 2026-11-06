@@ -39,6 +39,7 @@ function rows_() {
 }
 
 const minutes_ = hhmm => { const p = hhmm.split(':').map(Number); return p[0] * 60 + p[1]; };
+const to12h_ = hhmm => { const p = hhmm.split(':').map(Number); return (p[0] % 12 || 12) + ':' + String(p[1]).padStart(2, '0') + (p[0] < 12 ? ' a. m.' : ' p. m.'); };
 const digits_ = s => String(s || '').replace(/\D/g, '');
 const today_ = () => Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
 const nowMin_ = () => minutes_(Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'HH:mm'));
@@ -110,7 +111,7 @@ function book_(b) {
     lock.releaseLock();
   }
 
-  ntfy_('Nueva cita', `${name} · ${b.service}\n${b.date} a las ${b.time}\nCel: ${phone}`, 'scissors');
+  ntfy_('Nueva cita', `${name} · ${b.service}\n${b.date} a las ${to12h_(b.time)}\nCel: ${phone}`, 'scissors');
   return json_({ ok: true, id: id });
 }
 
@@ -129,7 +130,7 @@ function cancel_(id) {
   } finally {
     lock.releaseLock();
   }
-  ntfy_('Cita cancelada', `${row[COL.name]} canceló ${row[COL.service]}\n${row[COL.date]} a las ${row[COL.time]}`, 'x');
+  ntfy_('Cita cancelada', `${row[COL.name]} canceló ${row[COL.service]}\n${row[COL.date]} a las ${to12h_(row[COL.time])}`, 'x');
   return json_({ ok: true });
 }
 

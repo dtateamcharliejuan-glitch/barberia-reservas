@@ -196,7 +196,10 @@ h1 { font-size: clamp(3rem, 15vw, 4.6rem); }
 .period:first-child { margin-top: 0; }
 .times { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .empty { color: var(--muted); padding: 16px 0; }
-.slot { min-height: 54px; text-align: center; font-weight: 600; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.slot { min-height: 58px; display: grid; place-content: center; gap: 0; text-align: center; font-variant-numeric: tabular-nums; }
+.slot b { font-weight: 600; font-size: 1.1rem; line-height: 1.15; }
+.slot small { font-size: .72rem; color: var(--muted); line-height: 1.1; }
+.slot[disabled] small { color: inherit; }
 .slot[disabled] {
   cursor: not-allowed; color: #6d665d; font-weight: 500; text-decoration: line-through; border-style: dashed; border-color: #2d2924;
   background: repeating-linear-gradient(135deg, rgba(255,255,255,.035) 0 2px, transparent 2px 7px);

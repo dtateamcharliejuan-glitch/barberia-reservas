@@ -1,10 +1,13 @@
 import { config, money } from './config.js';
 import { heroScene, ICONS } from './art.js';
+import { to12h, splitTime, nowIn } from './time.js';
 import { bookableDays, daySlots, toISODate } from './slots.js';
 import { createStore } from './store.js';
 import { addMine, listMine, removeMine } from './mine.js';
 
 const $ = sel => document.querySelector(sel);
+// La hora de la barbería (Colombia), aunque el celular tenga otra zona horaria.
+const now0 = () => nowIn(config.timeZone);
 const store = createStore(config.sheetsUrl);
 const storage = (() => { try { localStorage.setItem('_t', '1'); localStorage.removeItem('_t'); return localStorage; } catch { const m = new Map(); return { getItem: k => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: k => m.delete(k) }; } })();
 
@@ -12,16 +15,15 @@ const storage = (() => { try { localStorage.setItem('_t', '1'); localStorage.rem
 const STEPS = ['inicio', 'servicio', 'dia', 'hora', 'datos', 'listo'];
 const NUMBERED = ['servicio', 'dia', 'hora', 'datos']; // los que cuentan como "Paso n de 4"
 
-const state = { step: 'inicio', service: null, date: null, time: null, booked: [], last: null, today: toISODate(new Date()) };
+const state = { step: 'inicio', service: null, date: null, time: null, booked: [], last: null, today: toISODate(now0()) };
 
 const parseDate = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d); };
 const longDay = iso => parseDate(iso).toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' });
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
-const friendlyDay = (iso, now = new Date()) => {
+const friendlyDay = (iso, now = now0()) => {
   const diff = Math.round((parseDate(iso) - parseDate(toISODate(now))) / 864e5);
   return diff === 0 ? `Hoy, ${longDay(iso)}` : diff === 1 ? `Mañana, ${longDay(iso)}` : cap(longDay(iso));
 };
-const short = { 0: 'Dom', 1: 'Lun', 2: 'Mar', 3: 'Mié', 4: 'Jue', 5: 'Vie', 6: 'Sáb' };
 const service = () => config.services.find(s => s.id === state.service);
 
 function el(tag, attrs = {}, html = '') {
@@ -39,7 +41,7 @@ const ICON = {
 
 function summaryHTML(b) {
   const row = (icon, label, value, cls = '') => `<div class="row ${cls}">${ICON[icon]}<dt>${label}</dt><dd>${value}</dd></div>`;
-  return `<dl>${row('service', 'Servicio', b.service)}${row('day', 'Día', friendlyDay(b.date))}${row('time', 'Hora', b.time)}${row('price', 'Precio', money(b.price), 'total')}</dl>`;
+  return `<dl>${row('service', 'Servicio', b.service)}${row('day', 'Día', friendlyDay(b.date))}${row('time', 'Hora', to12h(b.time))}${row('price', 'Precio', money(b.price), 'total')}</dl>`;
 }
 
 /* ---------- Avisos (toast) ---------- */
@@ -133,12 +135,16 @@ function fillStatic() {
 
 // "Abierto ahora" o cuándo abre.
 function renderStatus(now) {
-  const days = config.openDays.slice().sort((a, b) => a - b);
-  const hours = `${short[days[0]]}–${short[days.at(-1)]} · ${config.open}–${config.close}`;
   const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   const open = config.openDays.includes(now.getDay()) && hhmm >= config.open && hhmm < config.close;
   $('[data-status]').classList.toggle('open', open);
-  $('[data-status-text]').textContent = open ? `Abierto ahora · hasta las ${config.close}` : `Cerrado ahora · ${hours}`;
+  if (open) { $('[data-status-text]').textContent = `Abierto · hasta las ${to12h(config.close)}`; return; }
+  // Próxima apertura: hoy más tarde, mañana o el día de la semana.
+  const startToday = config.openDays.includes(now.getDay()) && hhmm < config.open;
+  let n = startToday ? 0 : 1;
+  while (n < 8 && !config.openDays.includes((now.getDay() + n) % 7)) n++;
+  const when = n === 0 ? 'hoy' : n === 1 ? 'mañana' : `el ${new Date(now.getFullYear(), now.getMonth(), now.getDate() + n).toLocaleDateString('es', { weekday: 'long' })}`;
+  $('[data-status-text]').textContent = `Cerrado · abre ${when} a las ${to12h(config.open)}`;
 }
 
 function renderMine(now) {
@@ -146,9 +152,9 @@ function renderMine(now) {
   const box = $('[data-mine]');
   box.hidden = !mine.length;
   box.replaceChildren(...mine.map(m => {
-    const card = el('div', { className: 'mine-card' }, `<small>Tu próxima cita</small><b>${friendlyDay(m.date, now)} · ${m.time}</b><span>${m.service}</span>`);
+    const card = el('div', { className: 'mine-card' }, `<small>Tu próxima cita</small><b>${friendlyDay(m.date, now)} · ${to12h(m.time)}</b><span>${m.service}</span>`);
     const btn = el('button', { type: 'button', className: 'btn btn-ghost btn-sm', textContent: 'Cancelar' });
-    btn.setAttribute('aria-label', `Cancelar la cita del ${longDay(m.date)} a las ${m.time}`);
+    btn.setAttribute('aria-label', `Cancelar la cita del ${longDay(m.date)} a las ${to12h(m.time)}`);
     btn.onclick = () => askCancel(m);
     card.append(btn);
     return card;
@@ -203,9 +209,11 @@ function renderTimes(now) {
     parts.push(el('h3', { className: 'period' }, `<span>${label}</span><span>${free ? `${free} libres` : 'llena'}</span>`));
     const grid = el('div', { className: 'times' });
     grid.append(...list.map(s => {
-      const b = el('button', { type: 'button', className: 'slot', disabled: !s.available, textContent: s.time });
+      const t = splitTime(s.time);
+      const b = el('button', { type: 'button', className: 'slot', disabled: !s.available }, `<b>${t.clock}</b><small>${t.period}</small>`);
+      b.dataset.time = s.time;
       b.setAttribute('aria-pressed', String(state.time === s.time));
-      if (!s.available) b.setAttribute('aria-label', `${s.time}, ${s.reason === 'past' ? 'ya pasó' : 'ocupada'}`);
+      b.setAttribute('aria-label', `${to12h(s.time)}${s.available ? '' : s.reason === 'past' ? ', ya pasó' : ', ocupada'}`);
       b.onclick = () => { state.time = s.time; go('datos'); };
       return b;
     }));
@@ -233,7 +241,7 @@ function renderForm() {
 }
 
 function render() {
-  const now = new Date();
+  const now = now0();
   renderStatus(now);
   renderMine(now);
   renderServices();
@@ -246,7 +254,7 @@ function render() {
 
 // Si cambió el día o la hora elegida ya no vale (pasó o alguien la tomó), se vuelve al paso correcto.
 function keepFresh() {
-  const now = new Date();
+  const now = now0();
   const today = toISODate(now);
   const newDay = today !== state.today;
   state.today = today;
@@ -282,7 +290,7 @@ async function refresh() {
 let midnightTimer;
 function scheduleMidnight() {
   clearTimeout(midnightTimer);
-  const now = new Date();
+  const now = now0();
   const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 5);
   midnightTimer = setTimeout(refresh, next - now);
 }
@@ -340,7 +348,7 @@ async function submit(ev) {
 let pending = null;
 function askCancel(m) {
   pending = m;
-  $('[data-sheet-text]').textContent = `${m.service}, ${friendlyDay(m.date).toLowerCase()} a las ${m.time}. La hora quedará libre para otra persona.`;
+  $('[data-sheet-text]').textContent = `${m.service}, ${friendlyDay(m.date).toLowerCase()} a las ${to12h(m.time)}. La hora quedará libre para otra persona.`;
   $('[data-sheet]').hidden = false;
   $('[data-sheet-no]').focus();
 }
