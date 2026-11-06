@@ -2,7 +2,7 @@
 
 Reserva paso a paso, una pantalla por paso: servicio → día → hora libre → nombre, celular (10 números) y nota opcional → listo.
 Quien reserva puede **cancelar** desde la pantalla de confirmación o desde «Tu próxima cita» en el inicio (solo desde el celular con el que reservó).
-Coste 0: la web vive en **GitHub Pages**, las citas en **Google Sheets** y el aviso llega al celular con **ntfy**.
+Coste 0: la web vive en **GitHub Pages**, las citas en **Google Sheets** y los avisos llegan por **Gmail** y **Google Calendar**.
 
 ## Cambiar nombre, precios y horario
 
