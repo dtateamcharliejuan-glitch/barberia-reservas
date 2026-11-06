@@ -27,7 +27,7 @@ const ctx = { Date,
   SpreadsheetApp: { getActiveSpreadsheet: () => ({ getSheetByName: n => sheets[n] ?? null, insertSheet: n => (sheets[n] = makeSheet()) }), newDataValidation: () => validation },
   LockService: { getScriptLock: () => ({ waitLock() {}, tryLock: () => true, releaseLock() {} }) },
   ScriptApp: { getProjectTriggers: () => triggers, newTrigger: fn => ({ timeBased: () => ({ everyMinutes: m => ({ create: () => triggers.push({ fn, m, getHandlerFunction: () => fn }) }) }) }) },
-  UrlFetchApp: { fetch: (u, o) => sent.push({ title: o.headers.Title, text: o.payload }) },
+  UrlFetchApp: { fetch: (u, o) => { const j = JSON.parse(o.payload); sent.push({ title: j.title, text: j.message, url: u, topic: j.topic }); return { getResponseCode: () => 200, getContentText: () => '{}' }; } },
   ContentService: { createTextOutput: t => ({ setMimeType: () => JSON.parse(t) }), MimeType: { JSON: 1 } } };
 vm.createContext(ctx); vm.runInContext(fs.readFileSync(require('path').join(__dirname, '../apps-script/Code.gs'), 'utf8'), ctx);
 const post = b => ctx.doPost({ postData: { contents: JSON.stringify(b) } });
@@ -82,3 +82,4 @@ t('no avisa la de dentro de 50 min todavía', !reminders.some(s => s.title.inclu
 t('la fila queda marcada', citas().find(r => r[4] === 'Pedro')[9] === 'Enviado');
 ctx.recordar();
 t('no repite el aviso', sent.length === before + 1);
+t('ntfy se publica en JSON al tema (tildes y emojis no rompen)', sent.every(s => s.url === 'https://ntfy.sh/' && s.topic === 'cambia-esto-barberia-xxxxxxxx'));

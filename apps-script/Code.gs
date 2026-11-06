@@ -152,15 +152,22 @@ function correo_(title, text) {
   } catch (err) { /* sin cupo de correo o sin permiso: queda el aviso ntfy */ }
 }
 
+// Se publica en JSON: así los títulos con tildes o emojis ("José", "✂️") no rompen el envío.
+// Devuelve el código y la respuesta de ntfy (200 = enviado) para poder revisarlo en el registro.
 function ntfy_(title, text, tag) {
   try {
-    UrlFetchApp.fetch('https://ntfy.sh/' + NTFY_TOPIC, {
+    const res = UrlFetchApp.fetch('https://ntfy.sh/', {
       method: 'post',
-      payload: text,
-      headers: { Title: title, Tags: tag, Priority: 'high' },
+      contentType: 'application/json',
+      payload: JSON.stringify({ topic: NTFY_TOPIC, title: title, message: text, tags: [tag], priority: 4 }),
       muteHttpExceptions: true,
     });
-  } catch (err) { /* la hoja ya está actualizada aunque falle el aviso */ }
+    if (res.getResponseCode() !== 200) console.warn('ntfy respondió ' + res.getResponseCode() + ': ' + res.getContentText());
+    return res.getResponseCode() + ' ' + res.getContentText();
+  } catch (err) {
+    console.warn('ntfy falló: ' + err); // la hoja ya está actualizada aunque falle el aviso
+    return 'error: ' + err;
+  }
 }
 
 // Solo devuelve fechas y horas: nunca nombres, teléfonos, notas ni ids.
@@ -257,4 +264,10 @@ function preparar() {
 
 function probarAviso() {
   aviso_('Prueba', 'Los avisos de Alex Studios funcionan ✂️', 'scissors');
+}
+
+// Si no llega la notificación: ejecútala y mira el "Registro de ejecución" abajo.
+function probarNtfy() {
+  console.log('Tema: ' + NTFY_TOPIC);
+  console.log('Respuesta de ntfy: ' + ntfy_('Prueba ntfy', 'Si ves esto, ntfy funciona desde Google ✂️', 'scissors'));
 }
