@@ -154,6 +154,18 @@ h1 { font-size: clamp(2.8rem, 14vw, 4.6rem); }
 .price-list small, .how small { color: var(--muted); font-size: .9rem; }
 .price { font-family: var(--display); font-weight: 800; font-size: 1.2rem; white-space: nowrap; }
 
+/* Dónde estamos: dirección, mapa y "Cómo llegar". */
+.where-text { display: grid; justify-items: start; gap: 10px; }
+.where-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; color: var(--muted); }
+.where-line span:not(.pin) { color: var(--ink); font-weight: 500; }
+.pin { flex: none; display: grid; color: var(--accent); }
+.pin svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linejoin: round; }
+.map { margin-top: 14px; height: clamp(180px, 28svh, 240px); border-radius: var(--r); overflow: hidden; border: 1px solid var(--line); background: var(--surface-2); }
+/* El mapa de Google es claro; así combina con la página oscura. */
+.map iframe { display: block; width: 100%; height: 100%; border: 0; filter: invert(.9) hue-rotate(180deg) saturate(.55) brightness(.95); }
+.link { display: inline-flex; align-items: center; min-height: 44px; color: var(--accent); font-weight: 600; text-decoration: underline; text-underline-offset: 4px; }
+.done-where { justify-content: center; margin-top: 16px; }
+
 .icon-tile { width: 56px; height: 56px; border-radius: 14px; display: grid; place-items: center; background: var(--surface-2); border: 1px solid var(--line); color: var(--accent); transition: transform .25s var(--ease), background-color .2s; }
 .icon-tile svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
 .icon-lg { width: 72px; height: 72px; border-radius: 16px; }
@@ -364,6 +376,10 @@ body[data-step="inicio"] .demo-note { padding-bottom: calc(var(--foot-h) + 8px);
   .how { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .how li { grid-template-columns: 56px 1fr; border: 1px solid var(--line); border-radius: var(--r); padding: 16px; background: var(--bg); }
   .how li:last-child { border-bottom: 1px solid var(--line); }
+  /* Dónde estamos, debajo de los pasos: texto a la izquierda, mapa a la derecha. */
+  .home-intro .where { margin-top: 16px; display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 16px; align-items: center; padding: 16px; border: 1px solid var(--line); border-radius: var(--r); background: var(--bg); }
+  .home-intro .where .list-title { margin: 0; font-size: 1.2rem; }
+  .home-intro .map { margin: 0; height: clamp(120px, 18vh, 220px); border-radius: var(--r-sm); }
   .day { min-height: 76px; }
   .times { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
   .demo-note { padding: 0 var(--pad) 16px; }
@@ -382,6 +398,9 @@ body[data-step="inicio"] .demo-note { padding-bottom: calc(var(--foot-h) + 8px);
   .price-list .icon-tile svg { width: 22px; height: 22px; }
   .price-list small { display: none; } /* lo que incluye cada servicio se ve en el paso 1 */
   .mine { margin-top: 14px; }
+  .home-intro.screen-body { padding-top: 28px; }
+  .how li { padding: 12px 14px; }
+  .home-intro .where { margin-top: 12px; padding: 12px; }
 }
 @media (min-width: 1024px) {
   .brand-panel { scrollbar-color: var(--line) var(--surface); }

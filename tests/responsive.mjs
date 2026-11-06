@@ -88,6 +88,10 @@ for (const size of SIZES) {
       const cols = await page.evaluate(() => getComputedStyle(document.querySelector('.layout')).gridTemplateColumns.split(' ').length);
       if (cols !== 2) out.push('inicio: en computador no salen las dos columnas');
     }
+    // Dónde estamos: el mapa se ve con buen tamaño y el botón "Cómo llegar" apunta a Google Maps.
+    const map = await page.locator('[data-map] iframe').evaluate(f => { f.scrollIntoView({ block: 'center' }); const b = f.getBoundingClientRect(); return { w: b.width, h: b.height, src: f.src }; });
+    if (map.w < 200 || map.h < 110 || !map.src.includes('google.com/maps')) out.push(`inicio: el mapa no se ve bien (${Math.round(map.w)}×${Math.round(map.h)})`);
+    if (!(await page.locator('.where [data-directions]').isVisible())) out.push('inicio: no se ve «Cómo llegar»');
     // Al bajar del todo, el último precio no queda tapado por la barra del botón.
     await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
     const covered = await page.evaluate(() => { const li = document.querySelector('.price-list li:last-child').getBoundingClientRect(); const foot = document.querySelector('[data-screen="inicio"] .screen-foot').getBoundingClientRect(); return foot.height > 0 && foot.top < li.bottom - 1 && foot.bottom > li.top && foot.left < li.right && foot.right > li.left; });

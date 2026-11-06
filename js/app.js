@@ -1,9 +1,9 @@
-import { config, money } from './config.js?v=7a191090';
-import { heroScene, ICONS } from './art.js?v=7a191090';
-import { to12h, splitTime, nowIn } from './time.js?v=7a191090';
-import { bookableDays, daySlots, toISODate } from './slots.js?v=7a191090';
-import { createStore } from './store.js?v=7a191090';
-import { addMine, listMine, removeMine } from './mine.js?v=7a191090';
+import { config, money } from './config.js?v=43dbc32b';
+import { heroScene, ICONS } from './art.js?v=43dbc32b';
+import { to12h, splitTime, nowIn } from './time.js?v=43dbc32b';
+import { bookableDays, daySlots, toISODate } from './slots.js?v=43dbc32b';
+import { createStore } from './store.js?v=43dbc32b';
+import { addMine, listMine, removeMine } from './mine.js?v=43dbc32b';
 
 const $ = sel => document.querySelector(sel);
 // La hora de la barbería (Colombia), aunque el celular tenga otra zona horaria.
@@ -38,6 +38,7 @@ const ICON = {
   time: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   price: '<svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>',
   user: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
+  pin: '<svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/></svg>',
 };
 
 function summaryHTML(b) {
@@ -132,6 +133,29 @@ function fillStatic() {
   const how = [['service', 'Servicio', 'Corte, cejas o barba'], ['day', 'Día', 'De lunes a sábado'], ['time', 'Hora', 'Solo ves las libres'], ['user', 'Tus datos', 'Nombre y celular']];
   $('[data-how]').replaceChildren(...how.map(([icon, title, text]) =>
     el('li', {}, `<span class="icon-tile" aria-hidden="true">${ICON[icon]}</span><span><b>${title}</b><small>${text}</small></span>`)));
+
+  fillWhere();
+}
+
+// Dirección, mapa de Google (sin clave) y "Cómo llegar".
+function fillWhere() {
+  const area = `${config.district}, ${config.city}`;
+  const query = `${config.address ? `${config.address}, ` : ''}${area}, Colombia`;
+  document.querySelectorAll('[data-address]').forEach(n => (n.textContent = config.address ? `${config.address} · ${area}` : `Barrio ${area}`));
+  document.querySelectorAll('.pin').forEach(n => (n.innerHTML = ICON.pin));
+  document.querySelectorAll('[data-directions]').forEach(a => (a.href = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(query)}`));
+  $('[data-map]').replaceChildren(el('iframe', {
+    src: `https://www.google.com/maps?q=${encodeURIComponent(query)}&z=16&hl=es&output=embed`,
+    title: `Mapa: ${config.name} en ${area}`, loading: 'lazy', referrerPolicy: 'no-referrer-when-downgrade',
+  }));
+
+  // En el computador el panel de la izquierda no tiene sitio: el bloque pasa a la columna del inicio.
+  const where = $('[data-where]');
+  const spot = { panel: where.parentElement, desk: $('.home-intro') };
+  const wide = matchMedia('(min-width: 1024px)');
+  const place = () => { const to = wide.matches ? spot.desk : spot.panel; if (where.parentElement !== to) to.append(where); };
+  place();
+  wide.addEventListener('change', place);
 }
 
 // "Abierto ahora" o cuándo abre.

@@ -5,6 +5,9 @@ export const config = {
   initials: 'AB', // se ve mientras no haya logo
   logo: '', // ruta del logo cuando lo tengamos, por ejemplo 'img/logo.png'
   district: 'Floralia',
+  city: 'Cali',
+  // Dirección para el mapa y "Cómo llegar", por ejemplo 'Calle 00 # 00-00'. Vacío = el mapa muestra el barrio.
+  address: '',
   timeZone: 'America/Bogota', // el calendario usa la hora de Colombia
 
   // Días: 0 = domingo, 1 = lunes … 6 = sábado.

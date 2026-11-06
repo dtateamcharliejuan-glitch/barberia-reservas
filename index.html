@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=7a191090">
+<link rel="stylesheet" href="css/styles.css?v=43dbc32b">
 </head>
 <body data-step="inicio">
 <!-- Kind: place (barbería). Flujo de una pantalla por paso, pensado para cualquier persona. -->
@@ -37,6 +37,16 @@
 
     <h2 class="list-title">Servicios y precios</h2>
     <ul class="price-list" data-price-list></ul>
+
+    <!-- Dónde estamos: en el computador se muestra en la columna de la derecha del inicio (js/app.js). -->
+    <section class="where" data-where aria-labelledby="t-where">
+      <div class="where-text">
+        <h2 class="list-title" id="t-where">Dónde estamos</h2>
+        <p class="where-line"><span class="pin" aria-hidden="true"></span><span data-address></span></p>
+        <a class="btn btn-ghost btn-sm" data-directions target="_blank" rel="noopener">Cómo llegar</a>
+      </div>
+      <div class="map" data-map></div>
+    </section>
   </div>
 </aside>
 
@@ -131,6 +141,7 @@
       <h2 id="t-listo" data-done-title>¡Cita reservada!</h2>
       <p class="sub">Te esperamos. Guarda esta pantalla o hazle captura.</p>
       <div class="summary card" data-summary-listo></div>
+      <p class="where-line done-where"><span class="pin" aria-hidden="true"></span><span data-address></span><a class="link" data-directions target="_blank" rel="noopener">Cómo llegar</a></p>
       <p class="note">¿Te equivocaste o no puedes venir? Cancélala aquí y la hora queda libre para otro.</p>
     </div>
     <div class="screen-foot">
@@ -157,6 +168,6 @@
 
 <p class="demo-note" data-demo-note hidden>Demo: las reservas se guardan solo en este navegador.</p>
 
-<script type="module" src="js/app.js?v=7a191090"></script>
+<script type="module" src="js/app.js?v=43dbc32b"></script>
 </body>
 </html>
