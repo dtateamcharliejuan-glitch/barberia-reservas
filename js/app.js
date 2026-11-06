@@ -1,9 +1,9 @@
-import { config, money } from './config.js?v=d4756753';
-import { heroScene, ICONS } from './art.js?v=d4756753';
-import { to12h, splitTime, nowIn } from './time.js?v=d4756753';
-import { bookableDays, daySlots, toISODate } from './slots.js?v=d4756753';
-import { createStore } from './store.js?v=d4756753';
-import { addMine, listMine, removeMine } from './mine.js?v=d4756753';
+import { config, money } from './config.js?v=137c21ab';
+import { heroScene, ICONS } from './art.js?v=137c21ab';
+import { to12h, splitTime, nowIn } from './time.js?v=137c21ab';
+import { bookableDays, daySlots, toISODate } from './slots.js?v=137c21ab';
+import { createStore } from './store.js?v=137c21ab';
+import { addMine, listMine, removeMine } from './mine.js?v=137c21ab';
 
 const $ = sel => document.querySelector(sel);
 // La hora de la barbería (Colombia), aunque el celular tenga otra zona horaria.
@@ -80,7 +80,11 @@ function show(step, dir = 'fwd') {
   document.body.dataset.step = step; // el CSS decide qué se ve en cada tamaño de pantalla
   render();
   scrollTo(0, 0);
-  // Foco al primer título que de verdad se ve (en el celular el del inicio está en el panel de la barbería).
+  focusHeading(step);
+}
+
+// Foco al primer título que de verdad se ve (en el celular el del inicio está en el panel de la barbería).
+function focusHeading(step) {
   const h = [...document.querySelectorAll(`[data-screen="${step}"] h1, [data-screen="${step}"] h2`)].find(e => e.getClientRects().length)
     ?? (step === 'inicio' ? $('#t-inicio') : null);
   h?.setAttribute('tabindex', '-1');
@@ -443,6 +447,8 @@ addEventListener('keydown', e => { if (e.key === 'Escape' && !$('[data-sheet]').
 
 history.replaceState({ step: 'inicio' }, '', location.pathname);
 show('inicio');
+// Safari puede correr esto antes de aplicar el CSS: si el título enfocado quedó oculto, se enfoca el que se ve.
+addEventListener('load', () => { const a = document.activeElement; if (!a || a === document.body || !a.getClientRects().length) focusHeading(state.step); });
 refresh();
 scheduleMidnight();
 setInterval(refresh, 60_000);

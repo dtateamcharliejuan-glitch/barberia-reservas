@@ -2,3 +2,6 @@ node_modules/
 shots/
 .DS_Store
 .omc/
+
+# Code.gs con el tema real de ntfy: no se sube
+apps-script/PEGAR-EN-GOOGLE.gs
