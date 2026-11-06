@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="es" data-type="place">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="page-type" content="place">
+<meta name="site-kind" content="other">
+<meta name="page-kind" content="place">
+<meta name="theme-color" content="#f4efe6">
+<title>Barbería Navaja · Reserva tu cita</title>
+<meta name="description" content="Barbería en el Centro. Elige servicio, día y hora libre y reserva en un minuto, sin crear cuenta.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231b1916'/><path d='M9 23 23 9M12 9h11v11' stroke='%23f4efe6' stroke-width='3' fill='none' stroke-linecap='round'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<!-- Kind: place (barbería). Sin fotos ni ubicación por petición del cliente: tipografía, color plano y la reserva real como protagonista. -->
+
+<header class="nav">
+  <div class="wrap nav-row">
+    <a class="brand" href="#top" data-name>Barbería Navaja</a>
+    <a class="btn btn-sm" href="#reservar">Reservar cita</a>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow">Barbería en <span data-district>Centro</span></p>
+        <h1>Tu corte, sin llamar ni esperar.</h1>
+        <p class="lead">Elige servicio, día y hora libre. Reservas en un minuto y sin crear cuenta.</p>
+        <div class="actions">
+          <a class="btn" href="#reservar">Reservar cita</a>
+          <a class="btn btn-ghost" href="#servicios">Ver precios</a>
+        </div>
+        <ul class="facts">
+          <li><b data-hours>Lun–Sáb</b><span data-hours-time>9:00–19:00</span></li>
+          <li><b data-from>Desde $100</b><span>corte, barba o los dos</span></li>
+          <li><b>Sin registro</b><span>solo nombre y teléfono</span></li>
+        </ul>
+      </div>
+
+      <aside class="next card" aria-labelledby="next-title">
+        <div class="next-head">
+          <h2 id="next-title" class="next-title">Próximas horas libres</h2>
+          <span class="live" aria-hidden="true"></span>
+        </div>
+        <p class="next-day" data-next-day>Cargando…</p>
+        <div class="next-times" data-next-times></div>
+        <a class="link" href="#reservar">Ver todo el calendario</a>
+      </aside>
+    </div>
+  </section>
+
+  <section id="servicios" class="services">
+    <div class="wrap">
+      <h2>Servicios y precios</h2>
+      <ul class="service-list" data-service-list></ul>
+    </div>
+  </section>
+
+  <section id="reservar" class="booking">
+    <div class="wrap">
+      <h2>Reserva tu cita</h2>
+
+      <form class="book-grid" data-form novalidate>
+        <div class="steps">
+          <fieldset class="step">
+            <legend><span class="num">1</span>Servicio</legend>
+            <div class="choice-grid" data-services></div>
+          </fieldset>
+
+          <fieldset class="step">
+            <legend><span class="num">2</span>Día</legend>
+            <div class="weekdays" aria-hidden="true"><span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span></div>
+            <div class="days" data-days></div>
+          </fieldset>
+
+          <fieldset class="step">
+            <legend><span class="num">3</span>Hora</legend>
+            <p class="legend-row"><span class="dot free"></span>Libre <span class="dot taken"></span>No disponible</p>
+            <div class="times" data-times aria-live="polite"></div>
+          </fieldset>
+
+          <fieldset class="step">
+            <legend><span class="num">4</span>Tus datos</legend>
+            <div class="fields">
+              <label class="field">
+                <span>Nombre</span>
+                <input name="name" autocomplete="name" required minlength="2" maxlength="60">
+              </label>
+              <label class="field">
+                <span>Teléfono</span>
+                <input name="phone" type="tel" inputmode="tel" autocomplete="tel" required maxlength="20">
+              </label>
+            </div>
+          </fieldset>
+        </div>
+
+        <aside class="summary card" aria-live="polite">
+          <h3>Tu cita</h3>
+          <dl>
+            <dt>Servicio</dt><dd data-sum-service>—</dd>
+            <dt>Día</dt><dd data-sum-day>—</dd>
+            <dt>Hora</dt><dd data-sum-time>—</dd>
+            <dt>Precio</dt><dd data-sum-price>—</dd>
+          </dl>
+          <p class="error" data-error hidden></p>
+          <button class="btn btn-block" type="submit" data-submit disabled>Confirmar cita</button>
+          <p class="hint" data-hint>Elige servicio, día y hora.</p>
+        </aside>
+      </form>
+
+      <div class="done card" data-done hidden tabindex="-1">
+        <div class="check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5 10 17 19 7"/></svg></div>
+        <h3>¡Cita reservada!</h3>
+        <p data-done-text></p>
+        <p class="hint">Si no puedes venir, avisa a la barbería para liberar la hora.</p>
+        <button class="btn btn-ghost" type="button" data-again>Hacer otra reserva</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap footer-row">
+    <span data-name>Barbería Navaja</span>
+    <span><span data-district>Centro</span> · <span data-hours-full>Lun–Sáb 9:00–19:00</span></span>
+    <span class="demo-note" data-demo-note hidden>Demo: las reservas se guardan solo en este navegador.</span>
+  </div>
+</footer>
+
+<div class="bar" data-bar>
+  <a class="btn btn-block" href="#reservar">Reservar cita</a>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

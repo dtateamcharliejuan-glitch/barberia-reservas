@@ -1,0 +1,8 @@
+{
+  "name": "barberia",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/slots.test.mjs"
+  }
+}
