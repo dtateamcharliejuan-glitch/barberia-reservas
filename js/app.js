@@ -1,17 +1,21 @@
-import { config } from './config.js';
+import { config, money } from './config.js';
 import { bookableDays, daySlots, toISODate } from './slots.js';
 import { createStore } from './store.js';
 
 const $ = sel => document.querySelector(sel);
 const store = createStore(config.sheetsUrl);
 
-const state = { service: null, date: null, time: null, booked: [] };
+// Orden del flujo. Cada paso es una pantalla.
+const STEPS = ['inicio', 'servicio', 'dia', 'hora', 'datos', 'listo'];
+const NUMBERED = ['servicio', 'dia', 'hora', 'datos']; // los que cuentan como "Paso n de 4"
 
-const money = n => `${config.currency}${n}`;
+const state = { step: 'inicio', service: null, date: null, time: null, booked: [] };
+
 const parseDate = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d); };
 const longDay = iso => parseDate(iso).toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' });
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
-const short = { 1: 'Lun', 2: 'Mar', 3: 'Mié', 4: 'Jue', 5: 'Vie', 6: 'Sáb', 0: 'Dom' };
+const short = { 0: 'Dom', 1: 'Lun', 2: 'Mar', 3: 'Mié', 4: 'Jue', 5: 'Vie', 6: 'Sáb' };
+const service = () => config.services.find(s => s.id === state.service);
 
 function el(tag, attrs = {}, html = '') {
   const node = Object.assign(document.createElement(tag), attrs);
@@ -19,121 +23,145 @@ function el(tag, attrs = {}, html = '') {
   return node;
 }
 
-// Texto fijo que sale de config.js
+/* ---------- Navegación entre pantallas ---------- */
+
+// Muestra una pantalla. `dir` decide de qué lado entra (adelante o atrás).
+function show(step, dir = 'fwd') {
+  state.step = step;
+  for (const s of document.querySelectorAll('[data-screen]')) {
+    const on = s.dataset.screen === step;
+    s.hidden = !on;
+    s.classList.remove('enter-fwd', 'enter-back');
+    if (on) { void s.offsetWidth; s.classList.add(`enter-${dir}`); }
+  }
+  const n = NUMBERED.indexOf(step);
+  $('[data-back]').hidden = step === 'inicio' || step === 'listo';
+  $('[data-count]').hidden = n < 0;
+  $('[data-progress]').hidden = n < 0;
+  if (n >= 0) {
+    $('[data-count]').textContent = `Paso ${n + 1} de ${NUMBERED.length}`;
+    $('[data-progress] span').style.width = `${((n + 1) / NUMBERED.length) * 100}%`;
+  }
+  render();
+  scrollTo(0, 0);
+  const h = $(`[data-screen="${step}"] h1, [data-screen="${step}"] h2`);
+  h?.setAttribute('tabindex', '-1');
+  h?.focus({ preventScroll: true });
+}
+
+// Avanzar deja una entrada en el historial: el botón atrás del celular vuelve un paso.
+function go(step) {
+  history.pushState({ step }, '', `#${step}`);
+  show(step, 'fwd');
+}
+
+function back() {
+  if (history.state?.step && history.state.step !== 'inicio') history.back();
+  else show(STEPS[Math.max(0, STEPS.indexOf(state.step) - 1)], 'back');
+}
+
+addEventListener('popstate', e => {
+  let step = e.state?.step ?? 'inicio';
+  // No se puede saltar a un paso sin haber completado los anteriores.
+  if (['dia', 'hora', 'datos'].includes(step) && !state.service) step = 'servicio';
+  if (['hora', 'datos'].includes(step) && !state.date) step = 'dia';
+  if (step === 'datos' && !state.time) step = 'hora';
+  if (step === 'listo') step = 'inicio';
+  show(step, STEPS.indexOf(step) < STEPS.indexOf(state.step) ? 'back' : 'fwd');
+});
+
+/* ---------- Pantallas ---------- */
+
 function fillStatic() {
   document.querySelectorAll('[data-name]').forEach(n => (n.textContent = config.name));
   document.querySelectorAll('[data-district]').forEach(n => (n.textContent = config.district));
   const days = config.openDays.slice().sort((a, b) => a - b);
-  const range = `${short[days[0]]}–${short[days.at(-1)]}`;
-  const hours = `${config.open}–${config.close}`;
-  $('[data-hours]').textContent = range;
-  $('[data-hours-time]').textContent = hours;
-  $('[data-hours-full]').textContent = `${range} ${hours}`;
-  $('[data-from]').textContent = `Desde ${money(Math.min(...config.services.map(s => s.price)))}`;
+  $('[data-hours]').textContent = `${short[days[0]]}–${short[days.at(-1)]} · ${config.open}–${config.close}`;
   document.title = `${config.name} · Reserva tu cita`;
   $('[data-demo-note]').hidden = !store.demo;
-
-  const list = $('[data-service-list]');
-  for (const s of config.services) {
-    list.append(el('li', {}, `<h3>${s.name}</h3><span class="price">${money(s.price)}</span><p>${s.includes}</p>`));
-  }
+  $('[data-price-list]').replaceChildren(...config.services.map(s =>
+    el('li', {}, `<span><b>${s.name}</b><small>${s.includes}</small></span><span class="price">${money(s.price)}</span>`)));
 }
 
 function renderServices() {
-  const box = $('[data-services]');
-  box.replaceChildren(...config.services.map(s => {
-    const b = el('button', { type: 'button', className: 'choice' }, `<b>${s.name}</b><span>${money(s.price)}</span>`);
+  $('[data-services]').replaceChildren(...config.services.map(s => {
+    const b = el('button', { type: 'button', className: 'option' },
+      `<b>${s.name}</b><span class="meta">${s.includes} · ${config.slotMinutes} min</span><span class="price">${money(s.price)}</span>`);
     b.setAttribute('aria-pressed', String(state.service === s.id));
-    b.onclick = () => { state.service = s.id; render(); };
+    b.onclick = () => { state.service = s.id; go('dia'); };
     return b;
   }));
 }
 
 function renderDays(now) {
-  const box = $('[data-days]');
   const days = bookableDays(now, config);
   const cells = [];
-  // Alinea el primer día con su columna (Lun … Sáb).
-  const lead = (parseDate(days[0]).getDay() + 6) % 7;
+  const lead = (parseDate(days[0]).getDay() + 6) % 7; // alinea con Lun … Sáb
   for (let i = 0; i < lead; i++) cells.push(el('span'));
   for (const iso of days) {
     const free = daySlots(iso, config, state.booked, now).filter(s => s.available).length;
-    const isToday = iso === toISODate(now);
-    const b = el('button', { type: 'button', className: 'day', disabled: free === 0 },
-      `<b>${parseDate(iso).getDate()}</b><small>${free === 0 ? 'lleno' : isToday ? 'hoy' : parseDate(iso).toLocaleDateString('es', { month: 'short' }).replace('.', '')}</small>`);
+    const label = free === 0 ? 'lleno' : iso === toISODate(now) ? 'hoy' : parseDate(iso).toLocaleDateString('es', { month: 'short' }).replace('.', '');
+    const b = el('button', { type: 'button', className: 'day', disabled: free === 0 }, `<b>${parseDate(iso).getDate()}</b><small>${label}</small>`);
     b.setAttribute('aria-pressed', String(state.date === iso));
     b.setAttribute('aria-label', `${longDay(iso)}${free === 0 ? ', sin horas libres' : `, ${free} horas libres`}`);
-    b.onclick = () => { state.date = iso; state.time = null; render(); };
+    b.onclick = () => { state.date = iso; state.time = null; go('hora'); };
     cells.push(b);
   }
-  box.replaceChildren(...cells);
+  $('[data-days]').replaceChildren(...cells);
+  const s = service();
+  $('[data-pick-service]').textContent = s ? `${s.name} · ${money(s.price)}` : '';
 }
 
 function renderTimes(now) {
   const box = $('[data-times]');
-  if (!state.date) { box.replaceChildren(el('p', { className: 'empty' }, 'Primero elige un día.')); return; }
+  if (!state.date) { box.replaceChildren(); return; }
+  $('[data-pick-day]').textContent = cap(longDay(state.date));
   const slots = daySlots(state.date, config, state.booked, now);
+  if (!slots.some(s => s.available)) {
+    box.replaceChildren(el('p', { className: 'empty' }, 'Este día ya no tiene horas libres. Vuelve atrás y elige otro.'));
+    return;
+  }
   box.replaceChildren(...slots.map(s => {
     const b = el('button', { type: 'button', className: 'slot', disabled: !s.available, textContent: s.time });
     b.setAttribute('aria-pressed', String(state.time === s.time));
-    if (!s.available) b.setAttribute('aria-label', `${s.time}, no disponible`);
-    b.onclick = () => { state.time = s.time; render(); };
+    if (!s.available) b.setAttribute('aria-label', `${s.time}, ocupada`);
+    b.onclick = () => { state.time = s.time; go('datos'); };
     return b;
   }));
 }
 
-// Tarjeta del hero: las próximas horas libres, que llevan directo a la reserva.
-function renderNext(now) {
-  const dayEl = $('[data-next-day]');
-  const box = $('[data-next-times]');
-  for (const iso of bookableDays(now, config)) {
-    const free = daySlots(iso, config, state.booked, now).filter(s => s.available).slice(0, 6);
-    if (!free.length) continue;
-    dayEl.textContent = iso === toISODate(now) ? `Hoy, ${longDay(iso)}` : cap(longDay(iso));
-    box.replaceChildren(...free.map(s => {
-      const b = el('button', { type: 'button', className: 'slot', textContent: s.time });
-      b.onclick = () => {
-        state.date = iso; state.time = s.time;
-        render();
-        $('#reservar').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-      };
-      return b;
-    }));
-    return;
-  }
-  dayEl.textContent = 'No quedan horas libres estas dos semanas.';
-  box.replaceChildren();
-}
-
 function formReady() {
-  const f = $('[data-form]');
-  return f.elements.name.value.trim().length >= 2 && f.elements.phone.value.replace(/\D/g, '').length >= 7;
+  const f = $('[data-form]').elements;
+  return f.name.value.trim().length >= 2 && f.phone.value.replace(/\D/g, '').length >= 7;
 }
 
 function renderSummary() {
-  const s = config.services.find(x => x.id === state.service);
-  $('[data-sum-service]').textContent = s ? s.name : '—';
-  $('[data-sum-price]').textContent = s ? money(s.price) : '—';
-  $('[data-sum-day]').textContent = state.date ? cap(longDay(state.date)) : '—';
-  $('[data-sum-time]').textContent = state.time ?? '—';
-  const picked = s && state.date && state.time;
-  $('[data-submit]').disabled = !(picked && formReady());
-  $('[data-hint]').textContent = !picked ? 'Elige servicio, día y hora.' : !formReady() ? 'Escribe tu nombre y teléfono.' : 'Todo listo.';
+  const s = service();
+  $('[data-sum-service]').textContent = s?.name ?? '';
+  $('[data-sum-price]').textContent = s ? money(s.price) : '';
+  $('[data-sum-day]').textContent = state.date ? cap(longDay(state.date)) : '';
+  $('[data-sum-time]').textContent = state.time ?? '';
+  $('[data-submit]').disabled = !formReady();
 }
 
 function render() {
   const now = new Date();
-  // Si la hora elegida acaba de ocuparse, se suelta.
-  if (state.date && state.time && !daySlots(state.date, config, state.booked, now).find(s => s.time === state.time)?.available) state.time = null;
   renderServices();
   renderDays(now);
   renderTimes(now);
-  renderNext(now);
   renderSummary();
 }
 
+/* ---------- Datos y envío ---------- */
+
 async function refresh() {
   try { state.booked = await store.list(); } catch { /* sin red: se mantiene lo último */ }
+  // Si la hora elegida se acaba de ocupar, se vuelve a elegir hora.
+  if (state.step === 'datos' && !daySlots(state.date, config, state.booked, new Date()).find(s => s.time === state.time)?.available) {
+    state.time = null;
+    show('hora', 'back');
+    return;
+  }
   render();
 }
 
@@ -145,63 +173,59 @@ function showError(msg) {
 
 async function submit(ev) {
   ev.preventDefault();
-  const f = $('[data-form]');
   const btn = $('[data-submit]');
-  if (btn.disabled) return;
-  const service = config.services.find(x => x.id === state.service);
-  const booking = {
-    date: state.date, time: state.time,
-    service: service.name, price: service.price,
-    name: f.elements.name.value.trim(), phone: f.elements.phone.value.trim(),
-  };
+  if (btn.disabled || !formReady()) return;
+  const f = $('[data-form]').elements;
+  const s = service();
+  const booking = { date: state.date, time: state.time, service: s.name, price: s.price, name: f.name.value.trim(), phone: f.phone.value.trim() };
+
   btn.disabled = true;
-  btn.setAttribute('aria-busy', 'true');
   btn.textContent = 'Reservando…';
   showError('');
   const res = await store.book(booking);
-  btn.removeAttribute('aria-busy');
   btn.textContent = 'Confirmar cita';
 
   if (res.ok) {
     state.booked.push({ date: booking.date, time: booking.time });
-    f.hidden = true;
-    const done = $('[data-done]');
-    $('[data-done-text]').textContent = `${booking.name}, te esperamos el ${longDay(booking.date)} a las ${booking.time} para ${service.name.toLowerCase()}.`;
-    done.hidden = false;
-    done.focus({ preventScroll: true });
-    $('#reservar').scrollIntoView({ block: 'start' });
+    $('[data-done-text]').textContent = `${booking.name}, te esperamos el ${longDay(booking.date)} a las ${booking.time} para ${s.name.toLowerCase()}.`;
+    // "Listo" reemplaza al paso de datos: atrás no vuelve a un formulario ya enviado.
+    history.replaceState({ step: 'listo' }, '', '#listo');
+    show('listo', 'fwd');
     return;
   }
   if (res.error === 'taken') {
-    showError('Alguien acaba de reservar esa hora. Elige otra.');
-    await refresh();
+    state.time = null;
+    try { state.booked = await store.list(); } catch { /* se queda lo último */ }
+    history.replaceState({ step: 'hora' }, '', '#hora');
+    show('hora', 'back');
+    $('[data-pick-day]').textContent = `Alguien acaba de reservar esa hora. Elige otra · ${cap(longDay(state.date))}`;
+  } else if (res.error === 'limit') {
+    showError('Ya tienes 2 citas pendientes con este celular. Si necesitas otra, escríbele a Alex.');
+    renderSummary();
   } else {
     showError('No se pudo reservar. Revisa tu conexión e inténtalo de nuevo.');
     renderSummary();
   }
 }
 
-function again() {
+function restart() {
   Object.assign(state, { service: null, date: null, time: null });
-  const f = $('[data-form]');
-  f.reset();
-  f.hidden = false;
-  $('[data-done]').hidden = true;
-  render();
+  $('[data-form]').reset();
+  history.replaceState({ step: 'inicio' }, '', location.pathname);
+  show('inicio', 'back');
 }
 
-// La barra fija del móvil se esconde cuando ya estás en la reserva.
-function watchBar() {
-  const bar = $('[data-bar]');
-  const io = new IntersectionObserver(([e]) => bar.classList.toggle('hide', e.isIntersecting), { threshold: 0.05 });
-  io.observe($('#reservar'));
-}
+/* ---------- Arranque ---------- */
 
 fillStatic();
+document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => go(b.dataset.go)));
+$('[data-back]').addEventListener('click', back);
 $('[data-form]').addEventListener('submit', submit);
 $('[data-form]').addEventListener('input', renderSummary);
-$('[data-again]').addEventListener('click', again);
-watchBar();
+$('[data-restart]').addEventListener('click', restart);
+
+history.replaceState({ step: 'inicio' }, '', location.pathname);
+show('inicio');
 refresh();
 setInterval(refresh, 60_000);
 addEventListener('focus', refresh);

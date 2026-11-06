@@ -3,6 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/slots.test.mjs"
+    "test": "node --test tests/slots.test.mjs",
+    "e2e": "node tests/e2e.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.48.2"
   }
 }
