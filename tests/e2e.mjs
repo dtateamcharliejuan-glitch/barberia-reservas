@@ -4,6 +4,7 @@ import { chromium, webkit } from 'playwright-core';
 import assert from 'node:assert/strict';
 import fs, { mkdirSync } from 'node:fs';
 import { to12h } from '../js/time.js';
+import { forceDemo } from './demo-mode.mjs';
 
 // "09:00" → expresión que busca "9:00 a. m." tal como la ve la persona.
 const shown = hhmm => to12h(hhmm).replace(/\./g, '\\.').replace(' ', '\\s+');
@@ -25,11 +26,7 @@ for (const vp of [{ name: 'movil', width: 390, height: 844, isMobile: true, hasT
   // En WebKit, el celular se presenta como iPhone: así se prueba el camino del archivo .ics.
   const iphone = WEBKIT && vp.isMobile ? { userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1' } : {};
   const ctx = await browser.newContext({ viewport: { width: vp.width, height: vp.height }, isMobile: vp.isMobile, hasTouch: vp.hasTouch, locale: 'es-CO', acceptDownloads: true, ...iphone });
-  // Número de WhatsApp de prueba (el real va en js/config.js).
-  await ctx.route('**/js/config.js*', async route => {
-    const res = await route.fetch();
-    await route.fulfill({ response: res, body: (await res.text()).replace(/whatsapp: '\d*'/, "whatsapp: '3001112233'") });
-  });
+  await forceDemo(ctx, { whatsapp: '3001112233' }); // número de prueba; el real va en js/config.js
   await ctx.route('https://calendar.google.com/**', route => route.fulfill({ body: 'ok' }));
   const page = await ctx.newPage();
   const errors = [];
@@ -211,6 +208,7 @@ for (const vp of [{ name: 'movil', width: 390, height: 844, isMobile: true, hasT
 await check('[reloj] a medianoche el calendario pasa solo al día nuevo', async () => {
   // El celular está en Madrid, pero la web debe usar la hora de Bogotá.
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'es-CO', timezoneId: 'Europe/Madrid' });
+  await forceDemo(ctx);
   const page = await ctx.newPage();
   await page.clock.install({ time: new Date('2026-11-06T23:50:00-05:00') }); // viernes 6 nov, 11:50 p. m. en Bogotá
   await page.goto(BASE);

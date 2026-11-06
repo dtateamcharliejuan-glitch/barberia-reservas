@@ -95,3 +95,8 @@ t('la fila queda marcada', citas().find(r => r[4] === 'Pedro')[9] === 'Enviado')
 ctx.recordar();
 t('no repite el aviso', sent.length === before + 1);
 t('ntfy apagado por defecto (Google agota el cupo gratis)', ntfy.length === 0);
+
+// Sheets convierte "09:00" en "9:00" y la fecha en "10/11/2026": igual tiene que verse ocupada.
+citas().push(['10/11/2026', '9:00', 'Corte', '18000', 'Real', '3160000000', '', '', '00000000-0000-4000-8000-999999999999', '', '']);
+t('hora "9:00" de la hoja sale como "09:00" ocupada', ctx.doGet().booked.some(b => b.date === '2026-11-10' && b.time === '09:00'));
+t('no deja reservar dos veces la hora "9:00"', post({ ...B, date: '2026-11-10', time: '09:00', phone: '3170000000' }).error === 'taken' && !citas().some(r => r[4] === 'Ana' && r[0] === '2026-11-10' && r[1] === '09:00'));

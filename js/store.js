@@ -3,7 +3,7 @@
 //   book(booking)   -> { ok: true, id } | { ok: false, error: 'taken' | 'limit' | 'bad' | 'network' }
 //   cancel(id)      -> { ok: true } | { ok: false, error: 'notfound' | 'network' }
 
-import { toISODate } from './slots.js?v=60a55759';
+import { toISODate } from './slots.js?v=7f9b8a8f';
 
 const KEY = 'barberia.bookings';
 
@@ -72,7 +72,12 @@ function sheetsStore(url) {
     async list() {
       const r = await fetch(`${url}?action=list&t=${Date.now()}`);
       const j = await r.json();
-      return { booked: j.booked ?? [], blocked: j.blocked ?? [] };
+      // "9:00" → "09:00": la hoja de Google a veces quita el cero y la hora no saldría ocupada.
+      const hhmm = t => (t ? String(t).replace(/^(\d):/, '0$1:') : t);
+      return {
+        booked: (j.booked ?? []).map(b => ({ date: b.date, time: hhmm(b.time) })),
+        blocked: (j.blocked ?? []).map(b => ({ date: b.date, from: hhmm(b.from), to: hhmm(b.to) })),
+      };
     },
     book: b => post({ action: 'book', ...b }),
     cancel: id => post({ action: 'cancel', id }),

@@ -3,6 +3,7 @@
 import { chromium, webkit } from 'playwright-core';
 import assert from 'node:assert/strict';
 import { mkdirSync } from 'node:fs';
+import { forceDemo } from './demo-mode.mjs';
 
 const BASE = process.env.BASE ?? 'http://localhost:5173/barberia/';
 const SHOTS = new URL('../shots/responsive/', import.meta.url).pathname.replace(/^\/(\w:)/, '$1');
@@ -63,6 +64,7 @@ async function inView(page, selector) {
 
 for (const size of SIZES) {
   const ctx = await browser.newContext({ viewport: { width: size.width, height: size.height }, isMobile: !!size.mobile, hasTouch: !!size.mobile, locale: 'es-CO', timezoneId: 'America/Bogota', reducedMotion: 'reduce' });
+  await forceDemo(ctx);
   const page = await ctx.newPage();
   await page.clock.install({ time: new Date('2026-11-09T10:10:00-05:00') }); // lunes, abierto
   await page.goto(BASE);

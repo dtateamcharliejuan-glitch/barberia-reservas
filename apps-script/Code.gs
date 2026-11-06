@@ -107,7 +107,15 @@ function rows_() {
   const sh = sheet_();
   const last = sh.getLastRow();
   if (last < 2) return [];
-  return sh.getRange(2, 1, last - 1, HEADERS.length).getDisplayValues();
+  // Sheets a veces convierte "09:00" en "9:00" o la fecha en "7/11/2026": se normaliza al leer,
+  // para que las comparaciones (hora ocupada, citas del día) siempre funcionen.
+  return sh.getRange(2, 1, last - 1, HEADERS.length).getDisplayValues().map(r => {
+    const t = String(r[COL.time]).trim().match(/^(\d{1,2}):(\d{2})/);
+    if (t) r[COL.time] = t[1].padStart(2, '0') + ':' + t[2];
+    const d = String(r[COL.date]).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (d) r[COL.date] = d[3] + '-' + d[2].padStart(2, '0') + '-' + d[1].padStart(2, '0');
+    return r;
+  });
 }
 
 const minutes_ = hhmm => { const p = hhmm.split(':').map(Number); return p[0] * 60 + p[1]; };

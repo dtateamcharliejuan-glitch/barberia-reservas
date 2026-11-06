@@ -57,3 +57,14 @@ test('al pasar la medianoche el calendario empieza en el día nuevo', () => {
   // Ya de noche, hoy no tiene horas libres.
   assert.ok(daySlots('2026-11-05', cfg, [], new Date(2026, 10, 5, 18, 31)).every(s => !s.available));
 });
+
+test('modo real: una hora "9:00" de la hoja se toma como "09:00"', async () => {
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({ json: async () => ({ booked: [{ date: '2026-11-07', time: '9:00' }], blocked: [{ date: '2026-11-09', from: '9:00', to: '11:00' }] }) });
+  try {
+    const s = createStore('https://example.test/exec');
+    assert.deepEqual(await s.list(), { booked: [{ date: '2026-11-07', time: '09:00' }], blocked: [{ date: '2026-11-09', from: '09:00', to: '11:00' }] });
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});

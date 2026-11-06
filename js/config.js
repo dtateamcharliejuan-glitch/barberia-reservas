@@ -29,7 +29,7 @@ export const config = {
 
   // Vacío = modo demo (las citas se guardan solo en este navegador).
   // Pega aquí la URL de la Web App de Google Apps Script para el modo real.
-  sheetsUrl: '',
+  sheetsUrl: 'https://script.google.com/macros/s/AKfycbxYBKs8h0Yk7y6tJahSMJki0zogLaa5XzhbMhRUUW_0sGlaR1bRPwNnOt1iWfS8IczcWg/exec',
 };
 
 export const money = n => `$${n.toLocaleString('es-CO')}`;
