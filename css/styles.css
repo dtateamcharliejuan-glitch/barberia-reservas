@@ -345,9 +345,16 @@ body[data-step="inicio"] .demo-note { padding-bottom: calc(var(--foot-h) + 8px);
     position: sticky; top: 32px; margin: 0 !important;
     max-height: calc(100dvh - 104px); overflow-y: auto; scrollbar-width: thin;
   }
-  .hero { height: clamp(200px, 26vh, 280px); }
+  .hero { height: clamp(170px, 22vh, 260px); }
+  .hero-art { width: min(100%, 380px); }
+  .brand-body { padding-bottom: 28px; }
+  .list-title { margin-top: 24px; }
+  .price-list li { padding: 10px 0; }
+  .place { margin-bottom: 14px; }
   h1 { font-size: clamp(2.8rem, 3.6vw, 4rem); }
-  .stage { margin-bottom: 16px; min-height: calc(100dvh - 104px); display: flex; flex-direction: column; }
+  /* La tarjeta de reserva llena la pantalla hasta un tope; en pantallas altas todo queda centrado. */
+  .stage { margin-bottom: 16px; min-height: min(calc(100dvh - 104px), 760px); display: flex; flex-direction: column; }
+  .layout { min-height: calc(100dvh - 56px); align-content: center; } /* 56px: la nota de demo de abajo */
   .stage > .screen { flex: 1; }
   .brand { display: none; } /* el nombre ya está en el panel de la izquierda */
   .top { border-radius: 28px 28px 0 0; }
@@ -362,10 +369,32 @@ body[data-step="inicio"] .demo-note { padding-bottom: calc(var(--foot-h) + 8px);
   .demo-note { padding: 0 var(--pad) 16px; }
 }
 
+/* Portátiles con poca altura: el panel de la barbería se compacta para caber sin scroll. */
+@media (min-width: 1024px) and (max-height: 880px) {
+  .hero { height: clamp(120px, 17vh, 170px); }
+  .hero-art { width: min(100%, 280px); }
+  .logo { width: 64px; height: 64px; font-size: 1.45rem; margin-bottom: 8px; }
+  h1 { font-size: clamp(2.4rem, 3vw, 3.2rem); }
+  .place { margin: 2px 0 10px; }
+  .list-title { margin: 18px 0 2px; font-size: 1.2rem; }
+  .price-list li { grid-template-columns: 44px 1fr auto; padding: 8px 0; }
+  .price-list .icon-tile { width: 44px; height: 44px; border-radius: 12px; }
+  .price-list .icon-tile svg { width: 22px; height: 22px; }
+  .price-list small { display: none; } /* lo que incluye cada servicio se ve en el paso 1 */
+  .mine { margin-top: 14px; }
+}
+@media (min-width: 1024px) {
+  .brand-panel { scrollbar-color: var(--line) var(--surface); }
+}
+
 /* ---------- Pantallas grandes (≥ 1600px) ---------- */
 @media (min-width: 1600px) {
   html { font-size: 17px; }
   .layout { max-width: 1360px; }
+}
+@media (min-width: 2400px) {
+  html { font-size: 19px; }
+  .layout { max-width: 1520px; }
 }
 
 /* ---------- Celular en horizontal: poca altura ---------- */

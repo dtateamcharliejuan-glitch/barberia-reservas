@@ -1,4 +1,4 @@
-// Responsive: recorre el flujo completo en 11 tamaños de pantalla y revisa proporciones.
+// Responsive: recorre el flujo completo en 14 tamaños de pantalla y revisa proporciones.
 // Uso: npm run responsive   (con la web servida; por defecto en http://localhost:5173/barberia/)
 import { chromium } from 'playwright-core';
 import assert from 'node:assert/strict';
@@ -17,9 +17,12 @@ const SIZES = [
   { name: '768-tablet', width: 768, height: 1024, mobile: true },
   { name: '1024-tablet-h', width: 1024, height: 768 },
   { name: '1280-laptop', width: 1280, height: 720 },
+  { name: '1366-laptop', width: 1366, height: 768 },
   { name: '1440-desktop', width: 1440, height: 900 },
+  { name: '1536-laptop', width: 1536, height: 864 },
   { name: '1920-fullhd', width: 1920, height: 1080 },
   { name: '1280x500-ventana-baja', width: 1280, height: 500 },
+  { name: '3840-4k', width: 3840, height: 2160 },
 ];
 
 const browser = await chromium.launch({ channel: process.env.CHANNEL ?? 'msedge' });
@@ -78,6 +81,13 @@ for (const size of SIZES) {
     if (!(await page.locator('h1').isVisible())) out.push('inicio: no se ve el nombre');
     const overlap = await page.evaluate(() => { const a = document.querySelector('[data-logo]').getBoundingClientRect(); const b = document.querySelector('.scissors').getBoundingClientRect(); return a.top < b.bottom - 2 && a.left < b.right && a.right > b.left; });
     if (overlap) out.push('inicio: el logo tapa las tijeras');
+    // En computador el panel de la barbería cabe entero, sin barra de scroll propia.
+    if (size.width >= 1024 && size.height >= 700) {
+      const extra = await page.evaluate(() => { const a = document.querySelector('.brand-panel'); return a.scrollHeight - a.clientHeight; });
+      if (extra > 0) out.push(`inicio: el panel de la barbería no cabe (sobran ${extra}px)`);
+      const cols = await page.evaluate(() => getComputedStyle(document.querySelector('.layout')).gridTemplateColumns.split(' ').length);
+      if (cols !== 2) out.push('inicio: en computador no salen las dos columnas');
+    }
     // Al bajar del todo, el último precio no queda tapado por la barra del botón.
     await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
     const covered = await page.evaluate(() => { const li = document.querySelector('.price-list li:last-child').getBoundingClientRect(); const foot = document.querySelector('[data-screen="inicio"] .screen-foot').getBoundingClientRect(); return foot.height > 0 && foot.top < li.bottom - 1 && foot.bottom > li.top && foot.left < li.right && foot.right > li.left; });

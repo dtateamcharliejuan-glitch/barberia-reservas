@@ -3,9 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/slots.test.mjs tests/store.test.mjs tests/time.test.mjs && node tests/apps-script.sim.cjs",
+    "test": "node --test tests/slots.test.mjs tests/store.test.mjs tests/time.test.mjs && node tests/apps-script.sim.cjs && node scripts/stamp.mjs --check",
     "e2e": "node tests/e2e.mjs",
-    "responsive": "node tests/responsive.mjs"
+    "responsive": "node tests/responsive.mjs",
+    "stamp": "node scripts/stamp.mjs"
   },
   "devDependencies": {
     "playwright-core": "^1.48.2"

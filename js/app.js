@@ -1,9 +1,9 @@
-import { config, money } from './config.js';
-import { heroScene, ICONS } from './art.js';
-import { to12h, splitTime, nowIn } from './time.js';
-import { bookableDays, daySlots, toISODate } from './slots.js';
-import { createStore } from './store.js';
-import { addMine, listMine, removeMine } from './mine.js';
+import { config, money } from './config.js?v=7a191090';
+import { heroScene, ICONS } from './art.js?v=7a191090';
+import { to12h, splitTime, nowIn } from './time.js?v=7a191090';
+import { bookableDays, daySlots, toISODate } from './slots.js?v=7a191090';
+import { createStore } from './store.js?v=7a191090';
+import { addMine, listMine, removeMine } from './mine.js?v=7a191090';
 
 const $ = sel => document.querySelector(sel);
 // La hora de la barbería (Colombia), aunque el celular tenga otra zona horaria.
