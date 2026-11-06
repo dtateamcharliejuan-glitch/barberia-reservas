@@ -1,4 +1,5 @@
-import { config, money, photo } from './config.js';
+import { config, money } from './config.js';
+import { heroScene, ICONS } from './art.js';
 import { bookableDays, daySlots, toISODate } from './slots.js';
 import { createStore } from './store.js';
 import { addMine, listMine, removeMine } from './mine.js';
@@ -120,17 +121,14 @@ function fillStatic() {
   document.title = `${config.name} · Reserva tu cita`;
   $('[data-demo-note]').hidden = !store.demo;
 
-  const hero = $('[data-hero]');
-  hero.src = photo(config.heroPhoto, 900, 600);
-  hero.srcset = `${photo(config.heroPhoto, 600, 400)} 600w, ${photo(config.heroPhoto, 900, 600)} 900w, ${photo(config.heroPhoto, 1400, 933)} 1400w`;
-  hero.sizes = '(min-width: 720px) 540px, 100vw';
+  $('[data-hero]').innerHTML = heroScene;
 
   const logo = $('[data-logo]');
   if (config.logo) logo.replaceChildren(el('img', { src: config.logo, alt: '' }));
   else logo.textContent = config.initials;
 
   $('[data-price-list]').replaceChildren(...config.services.map(s =>
-    el('li', {}, `<img class="thumb" src="${photo(s.photo, 120, 120)}" alt="" width="56" height="56" loading="lazy"><span><b>${s.name}</b><small>${s.includes}</small></span><span class="price">${money(s.price)}</span>`)));
+    el('li', {}, `<span class="icon-tile" aria-hidden="true">${ICONS[s.icon]}</span><span><b>${s.name}</b><small>${s.includes}</small></span><span class="price">${money(s.price)}</span>`)));
 }
 
 // "Abierto ahora" o cuándo abre.
@@ -160,7 +158,7 @@ function renderMine(now) {
 function renderServices() {
   $('[data-services]').replaceChildren(...config.services.map(s => {
     const b = el('button', { type: 'button', className: 'option' },
-      `<img src="${photo(s.photo, 160, 160)}" alt="" width="76" height="76"><span><b>${s.name}</b><span class="meta">${s.includes} · ${config.slotMinutes} min</span></span><span class="price">${money(s.price)}</span>`);
+      `<span class="icon-tile icon-lg" aria-hidden="true">${ICONS[s.icon]}</span><span><b>${s.name}</b><span class="meta">${s.includes} · ${config.slotMinutes} min</span></span><span class="price">${money(s.price)}</span>`);
     b.setAttribute('aria-pressed', String(state.service === s.id));
     b.onclick = () => { state.service = s.id; go('dia'); };
     return b;
@@ -402,6 +400,9 @@ refresh();
 scheduleMidnight();
 setInterval(refresh, 60_000);
 // En el celular la pestaña se duerme: al volver se actualiza todo.
-document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+document.addEventListener('visibilitychange', () => {
+  document.documentElement.classList.toggle('paused', document.hidden); // la animación de portada no gasta batería en segundo plano
+  if (!document.hidden) refresh();
+});
 addEventListener('focus', refresh);
 addEventListener('pageshow', e => { if (e.persisted) refresh(); });

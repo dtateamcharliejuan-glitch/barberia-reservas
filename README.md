@@ -13,7 +13,7 @@ Todo está en [`js/config.js`](js/config.js): nombre, barrio, días y horas de a
 ## Logo y fotos
 
 - **Logo:** guarda el archivo en `img/` y pon la ruta en `logo` de `js/config.js` (por ejemplo `img/logo.png`). Mientras tanto se ven las iniciales `AB`.
-- **Fotos:** ahora son de Unsplash (provisionales). Para usar fotos de Alex, guárdalas en `img/` y cambia `heroPhoto` y `photo` de cada servicio.
+- **Ilustraciones:** la portada (poste y tijeras animados) y los iconos de servicio están dibujados a mano en `js/art.js`; no hay fotos de stock. El icono de cada servicio se elige con `icon` en `js/config.js` (`scissors`, `brow`, `beard`).
 
 ## Modo demo y modo real
 

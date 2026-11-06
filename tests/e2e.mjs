@@ -26,21 +26,24 @@ for (const vp of [{ name: 'movil', width: 390, height: 844, isMobile: true, hasT
   const visible = name => page.locator(`[data-screen="${name}"]`).waitFor();
   const shot = async n => { await settle(page); await page.screenshot({ path: `${SHOTS}${vp.name}-${n}.png` }); };
 
-  await check(`[${vp.name}] inicio: nombre, logo, foto, barrio y precios en pesos`, async () => {
+  await check(`[${vp.name}] inicio: nombre, logo, ilustración animada, barrio y precios en pesos`, async () => {
     assert.equal(await page.locator('h1').innerText(), 'Alex Barber');
     assert.equal(await page.locator('[data-logo]').innerText(), 'AB');
-    assert.ok(await page.locator('[data-hero]').evaluate(i => i.complete && i.naturalWidth > 0), 'la foto de portada carga');
+    assert.ok(await page.locator('[data-hero] svg.scene').isVisible(), 'la ilustración se ve');
+    assert.equal(await page.locator('.blade-top').evaluate(e => getComputedStyle(e).animationName), 'snip-top', 'las tijeras se mueven');
+    assert.equal(await page.locator('img').count(), 0, 'sin fotos de stock');
+    assert.equal(await page.locator('[data-price-list] .icon-tile svg').count(), 3);
     assert.match(await page.locator('.place').innerText(), /Floralia/);
     assert.deepEqual(await page.locator('[data-price-list] .price').allInnerTexts(), ['$18.000', '$20.000', '$23.000']);
     assert.equal(await page.locator('[data-mine]').isHidden(), true, 'sin citas todavía');
     await shot('0-inicio');
   });
 
-  await check(`[${vp.name}] Reservar cita → paso 1, con fotos en cada servicio`, async () => {
+  await check(`[${vp.name}] Reservar cita → paso 1, con icono en cada servicio`, async () => {
     await page.getByRole('button', { name: 'Reservar cita' }).click();
     await visible('servicio');
     assert.equal(await page.locator('[data-count]').innerText(), 'Paso 1 de 4');
-    assert.equal(await page.locator('.option img').count(), 3);
+    assert.equal(await page.locator('.option .icon-tile svg').count(), 3);
     await shot('1-servicio');
   });
 
