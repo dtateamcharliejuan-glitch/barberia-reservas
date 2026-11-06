@@ -3,7 +3,7 @@
 //   book(booking)   -> { ok: true, id } | { ok: false, error: 'taken' | 'limit' | 'bad' | 'network' }
 //   cancel(id)      -> { ok: true } | { ok: false, error: 'notfound' | 'network' }
 
-import { toISODate } from './slots.js?v=6f482298';
+import { toISODate } from './slots.js?v=406502cd';
 
 const KEY = 'barberia.bookings';
 

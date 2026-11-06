@@ -92,6 +92,8 @@ for (const size of SIZES) {
     const map = await page.locator('[data-map] iframe').evaluate(f => { f.scrollIntoView({ block: 'center' }); const b = f.getBoundingClientRect(); return { w: b.width, h: b.height, src: f.src }; });
     if (map.w < 200 || map.h < 110 || !map.src.includes('google.com/maps')) out.push(`inicio: el mapa no se ve bien (${Math.round(map.w)}×${Math.round(map.h)})`);
     if (!(await page.locator('.where [data-directions]').isVisible())) out.push('inicio: no se ve «Cómo llegar»');
+    const addr = await page.locator('.where [data-address]').innerText();
+    if (/\d{2}a0|u00a0|u2011/.test(addr)) out.push(`inicio: la dirección sale con códigos raros («${addr}»)`);
     // Al bajar del todo, el último precio no queda tapado por la barra del botón.
     await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
     const covered = await page.evaluate(() => { const li = document.querySelector('.price-list li:last-child').getBoundingClientRect(); const foot = document.querySelector('[data-screen="inicio"] .screen-foot').getBoundingClientRect(); return foot.height > 0 && foot.top < li.bottom - 1 && foot.bottom > li.top && foot.left < li.right && foot.right > li.left; });
